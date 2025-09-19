@@ -30,6 +30,14 @@ router.get('/', async (req, res, next) => {
 });
 
 
+
+// Handle missing project parameter (/projects/configs instead of /projects/:project/configs)
+router.get('/configs', (req, res) => {
+  res.status(400).json({ 
+    error: 'Bad Request',
+    message: 'Project parameter is required'
+  });
+});
 // GET /projects/:project/configs - Get all configs for a specific project
 router.get('/:project/configs', async (req, res, next) => {
   try {
