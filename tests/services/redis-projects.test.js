@@ -13,11 +13,13 @@ describe('Redis Service - Project Discovery', () => {
     // Clear test data including projects set and all test keys
     const client = redisService.getClient();
     const testKeys = await client.keys('test*');
+    const configKeys = await client.keys('*:config:*');
     const projectsSet = ['config:projects'];
     
-    // Clear test keys
-    if (testKeys.length > 0) {
-      await client.del(...testKeys);
+    // Clear all test-related keys
+    const allKeys = [...testKeys, ...configKeys];
+    if (allKeys.length > 0) {
+      await client.del(...allKeys);
     }
     
     // Clear projects set completely
