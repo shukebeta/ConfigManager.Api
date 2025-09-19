@@ -80,7 +80,8 @@ describe('Config API Routes', () => {
         value: testValue,
         operations: {
           set: true,
-          published: expect.any(Number)
+          published: expect.any(Number),
+          projectRegistered: expect.any(Number)
         }
       });
 
