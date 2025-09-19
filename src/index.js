@@ -5,6 +5,7 @@ const redisService = require('./services/redis');
 const corsMiddleware = require('./middleware/cors');
 const { errorHandler, notFoundHandler } = require('./middleware/error');
 const configRoutes = require('./routes/config');
+const projectRoutes = require('./routes/projects');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,6 +37,7 @@ app.get('/health', async (req, res) => {
 
 // API routes
 app.use('/redis', configRoutes);
+app.use('/projects', projectRoutes);
 
 // Error handling
 app.use(notFoundHandler);

@@ -46,8 +46,8 @@ router.post('/:key', async (req, res, next) => {
       throw error;
     }
 
-    // Execute SET + PUBLISH
-    const result = await redisService.setAndPublish(key, String(value));
+    // Execute SET + PUBLISH + auto-register project
+    const result = await redisService.setConfigAndPublish(key, String(value));
     
     res.json({
       success: true,
@@ -55,7 +55,8 @@ router.post('/:key', async (req, res, next) => {
       value: String(value),
       operations: {
         set: result.set === 'OK',
-        published: result.published // publish returns number of clients that received the message
+        published: result.published, // publish returns number of clients that received the message
+        projectRegistered: result.projectRegistered !== null ? result.projectRegistered >= 0 : null
       }
     });
   } catch (error) {
