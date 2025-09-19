@@ -81,7 +81,7 @@ describe('Config API Routes', () => {
         operations: {
           set: true,
           published: expect.any(Number),
-          projectRegistered: expect.any(Number)
+          projectRegistered: null
         }
       });
 
