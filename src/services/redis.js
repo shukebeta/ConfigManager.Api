@@ -78,9 +78,9 @@ class RedisService {
   }
 
   // Set operations
-  async sadd(key, member) {
+  async sadd(key, ...members) {
     const client = this.getClient();
-    return await client.sadd(key, member);
+    return await client.sadd(key, ...members);
   }
 
   async smembers(key) {
