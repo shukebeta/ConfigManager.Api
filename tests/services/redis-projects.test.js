@@ -2,7 +2,15 @@ const redisService = require('../../src/services/redis');
 
 describe('Redis Service - Project Discovery', () => {
   beforeEach(async () => {
-    // Clear test data including projects set
+    await cleanupTestData();
+  });
+
+  afterEach(async () => {
+    await cleanupTestData();
+  });
+
+  async function cleanupTestData() {
+    // Clear test data including projects set and all test keys
     const client = redisService.getClient();
     const testKeys = await client.keys('test*');
     const projectsSet = ['config:projects'];
@@ -12,9 +20,9 @@ describe('Redis Service - Project Discovery', () => {
       await client.del(...testKeys);
     }
     
-    // Clear projects set
+    // Clear projects set completely
     await client.del(...projectsSet);
-  });
+  }
 
   describe('setConfigAndPublish', () => {
     test('should set, publish, and auto-register project for config keys', async () => {
