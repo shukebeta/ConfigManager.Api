@@ -34,10 +34,10 @@ router.get('/', async (req, res, next) => {
 router.get('/:project/configs', async (req, res, next) => {
   try {
     const { project } = req.params;
+    console.log('Project param received:', JSON.stringify(project), 'length:', project.length);
     
     // Basic validation
     if (!project || project.trim() === '') {
-    console.log('Project param received:', JSON.stringify(project));
       const error = new Error('Project parameter is required');
       error.type = 'validation';
       throw error;
