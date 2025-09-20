@@ -14,8 +14,8 @@ export const useProjectsStore = defineStore('projects', () => {
   // Getters
   const hasProjects = computed(() => projects.value.length > 0)
   const hasSelectedProject = computed(() => selectedProject.value !== '')
-  const categories = computed(() => projectConfigs.value?.categories || [])
-  const configsByCategory = computed(() => projectConfigs.value?.configs || {})
+  const groups = computed(() => projectConfigs.value?.groups || [])
+  const configsByGroup = computed(() => projectConfigs.value?.configs || {})
 
   // Actions
   async function fetchProjects() {
@@ -111,8 +111,8 @@ export const useProjectsStore = defineStore('projects', () => {
     // Getters
     hasProjects,
     hasSelectedProject,
-    categories,
-    configsByCategory,
+    groups,
+    configsByGroup,
     // Actions
     fetchProjects,
     selectProject,

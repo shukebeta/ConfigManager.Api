@@ -8,14 +8,21 @@ export interface ProjectsResponse {
   source: string
 }
 
-export interface ConfigValue {
-  [key: string]: string
+export interface ConfigItem {
+  key: string
+  value: string
+  type: 'string' | 'integer' | 'float' | 'boolean' | 'loglevel' | 'array' | 'object' | 'null'
+  parsedValue: any
+}
+
+export interface ConfigGroup {
+  [key: string]: ConfigItem
 }
 
 export interface ProjectConfigsResponse {
   project: string
-  configs: Record<string, ConfigValue>
-  categories: string[]
+  configs: Record<string, ConfigGroup>
+  groups: string[]
   totalConfigs: number
 }
 

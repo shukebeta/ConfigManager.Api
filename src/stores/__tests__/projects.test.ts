@@ -70,10 +70,15 @@ describe('Projects Store', () => {
     const mockConfigsResponse = {
       project: 'project2',
       configs: {
-        database: { 'db.host': 'localhost', 'db.port': '5432' },
-        cache: { 'cache.ttl': '3600' }
+        database: { 
+          'db.host': { key: 'project2:database:db.host', value: 'localhost', type: 'string', parsedValue: 'localhost' },
+          'db.port': { key: 'project2:database:db.port', value: '5432', type: 'integer', parsedValue: 5432 }
+        },
+        cache: { 
+          'cache.ttl': { key: 'project2:cache:cache.ttl', value: '3600', type: 'integer', parsedValue: 3600 }
+        }
       },
-      categories: ['database', 'cache'],
+      groups: ['database', 'cache'],
       totalConfigs: 3
     }
     
@@ -83,8 +88,8 @@ describe('Projects Store', () => {
     
     expect(store.selectedProject).toBe('project2')
     expect(store.projectConfigs).toEqual(mockConfigsResponse)
-    expect(store.categories).toEqual(['database', 'cache'])
-    expect(store.configsByCategory).toEqual(mockConfigsResponse.configs)
+    expect(store.groups).toEqual(['database', 'cache'])
+    expect(store.configsByGroup).toEqual(mockConfigsResponse.configs)
   })
 
   it('should handle project configs fetch error', async () => {
@@ -108,9 +113,9 @@ describe('Projects Store', () => {
     const mockConfigsResponse = {
       project: 'project1',
       configs: {
-        database: { 'db.host': 'localhost' }
+        database: { 'db.host': { key: 'project1:database:db.host', value: 'localhost', type: 'string', parsedValue: 'localhost' } }
       },
-      categories: ['database'],
+      groups: ['database'],
       totalConfigs: 1
     }
     
@@ -162,7 +167,7 @@ describe('Projects Store', () => {
       configs: {
         database: {} // Empty after deletion
       },
-      categories: ['database'],
+      groups: ['database'],
       totalConfigs: 0
     }
     

@@ -46,10 +46,10 @@ describe('API Client', () => {
           
           expect(configsResponse).toHaveProperty('project')
           expect(configsResponse).toHaveProperty('configs')
-          expect(configsResponse).toHaveProperty('categories')
+          expect(configsResponse).toHaveProperty('groups')
           expect(configsResponse).toHaveProperty('totalConfigs')
           expect(configsResponse.project).toBe(projectName)
-          expect(Array.isArray(configsResponse.categories)).toBe(true)
+          expect(Array.isArray(configsResponse.groups)).toBe(true)
           expect(typeof configsResponse.totalConfigs).toBe('number')
         } else {
           console.log('No projects available for testing')

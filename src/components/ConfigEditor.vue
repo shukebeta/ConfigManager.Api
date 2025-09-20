@@ -44,8 +44,8 @@
         <div class="filter-controls">
           <select v-model="selectedCategory" class="category-filter">
             <option value="">All Categories</option>
-            <option v-for="category in categories" :key="category" :value="category">
-              {{ category }}
+            <option v-for="group in groups" :key="group" :value="group">
+              {{ group }}
             </option>
           </select>
         </div>
@@ -61,28 +61,90 @@
         <h3 class="category-header">{{ category }}</h3>
         <div class="configs-list">
           <div
-            v-for="(value, key) in getFilteredConfigs(category)"
+            v-for="(configItem, key) in getFilteredConfigs(category)"
             :key="key"
             class="config-item"
           >
             <div class="config-key">
               <label :for="`config-${key}`">{{ key }}</label>
+              <span class="config-type">{{ configItem.type }}</span>
             </div>
             <div class="config-value">
+              <!-- Boolean type: use checkbox -->
               <input
+                v-if="configItem.type === 'boolean'"
+                type="checkbox"
+                :id="`config-${key}`"
+                :checked="configItem.parsedValue"
+                @change="updateBooleanConfig(String(key), $event)"
+                class="config-checkbox"
+              />
+              
+              <!-- Number types: use number input -->
+              <input
+                v-else-if="configItem.type === 'integer' || configItem.type === 'float'"
+                type="number"
+                :step="configItem.type === 'float' ? '0.01' : '1'"
                 :id="`config-${key}`"
                 v-model="editableConfigs[String(key)]"
                 @blur="handleConfigChange"
                 @keyup.enter="handleConfigChange"
                 :class="[
                   'config-input',
-                  { 'modified': isModified(String(key), value) }
+                  { 'modified': isModified(String(key), configItem.value) }
                 ]"
-                :placeholder="value || 'Enter value...'"
+                :placeholder="configItem.value || 'Enter value...'"
+              />
+              
+              <!-- Log level: use select -->
+              <select
+                v-else-if="configItem.type === 'loglevel'"
+                :id="`config-${key}`"
+                v-model="editableConfigs[String(key)]"
+                @change="handleConfigChange"
+                :class="[
+                  'config-select',
+                  { 'modified': isModified(String(key), configItem.value) }
+                ]"
+              >
+                <option value="debug">Debug</option>
+                <option value="info">Info</option>
+                <option value="warn">Warn</option>
+                <option value="error">Error</option>
+                <option value="fatal">Fatal</option>
+              </select>
+              
+              <!-- JSON types: use textarea -->
+              <textarea
+                v-else-if="configItem.type === 'object' || configItem.type === 'array'"
+                :id="`config-${key}`"
+                v-model="editableConfigs[String(key)]"
+                @blur="handleConfigChange"
+                :class="[
+                  'config-textarea',
+                  { 'modified': isModified(String(key), configItem.value) }
+                ]"
+                :placeholder="configItem.value || 'Enter JSON...'"
+                rows="3"
+              ></textarea>
+              
+              <!-- Default: text input -->
+              <input
+                v-else
+                type="text"
+                :id="`config-${key}`"
+                v-model="editableConfigs[String(key)]"
+                @blur="handleConfigChange"
+                @keyup.enter="handleConfigChange"
+                :class="[
+                  'config-input',
+                  { 'modified': isModified(String(key), configItem.value) }
+                ]"
+                :placeholder="configItem.value || 'Enter value...'"
               />
               <div class="config-actions">
                 <button
-                  v-if="isModified(String(key), value)"
+                  v-if="isModified(String(key), configItem.value)"
                   @click="saveConfig(String(key))"
                   :disabled="loading"
                   class="save-btn"
@@ -90,8 +152,8 @@
                   Save
                 </button>
                 <button
-                  v-if="isModified(String(key), value)"
-                  @click="resetConfig(String(key), value)"
+                  v-if="isModified(String(key), configItem.value)"
+                  @click="resetConfig(String(key), configItem.value)"
                   class="reset-btn"
                 >
                   Reset
@@ -148,8 +210,8 @@ const {
   loading,
   error,
   hasSelectedProject,
-  categories,
-  configsByCategory
+  groups,
+  configsByGroup
 } = storeToRefs(projectsStore)
 const { fetchProjectConfigs, updateConfig, deleteConfig, clearError } = projectsStore
 
@@ -168,7 +230,7 @@ const deleteDialog = ref()
 
 // Computed properties
 const hasConfigs = computed(() => {
-  return projectConfigs.value && Object.keys(configsByCategory.value).length > 0
+  return projectConfigs.value && Object.keys(configsByGroup.value).length > 0
 })
 
 const totalConfigs = computed(() => projectConfigs.value?.totalConfigs || 0)
@@ -178,12 +240,12 @@ const filteredCategories = computed(() => {
   if (selectedCategory.value) {
     return [selectedCategory.value]
   }
-  return categories.value.filter(category => {
+  return groups.value.filter(category => {
     if (!searchQuery.value) return true
-    const configs = configsByCategory.value[category]
+    const configs = configsByGroup.value[category]
     return Object.keys(configs).some(key => 
       key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      configs[key].toLowerCase().includes(searchQuery.value.toLowerCase())
+      configs[key].value.toLowerCase().includes(searchQuery.value.toLowerCase())
     )
   })
 })
@@ -201,8 +263,8 @@ watch(
     if (newConfigs?.configs) {
       const flattened: Record<string, string> = {}
       Object.entries(newConfigs.configs).forEach(([, configs]) => {
-        Object.entries(configs).forEach(([key, value]) => {
-          flattened[key] = value
+        Object.entries(configs).forEach(([key, configItem]) => {
+          flattened[key] = configItem.value
         })
       })
       editableConfigs.value = { ...flattened }
@@ -234,6 +296,13 @@ const saveConfig = async (key: string) => {
     console.error('Failed to save config:', err)
     // Error is handled by the store
   }
+}
+
+const updateBooleanConfig = async (key: string, event: Event) => {
+  const target = event.target as HTMLInputElement
+  const value = target.checked ? 'true' : 'false'
+  editableConfigs.value[key] = value
+  await saveConfig(key)
 }
 
 const refreshConfigs = async () => {
@@ -280,19 +349,19 @@ const cancelDeleteConfig = () => {
 
 // Helper function to get filtered configs for a category
 const getFilteredConfigs = (category: string) => {
-  const configs = configsByCategory.value[category] || {}
+  const configs = configsByGroup.value[category] || {}
   
   if (!searchQuery.value) {
     return configs
   }
   
-  const filtered: Record<string, string> = {}
-  Object.entries(configs).forEach(([key, value]) => {
+  const filtered: Record<string, any> = {}
+  Object.entries(configs).forEach(([key, configItem]) => {
     if (
       key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      value.toLowerCase().includes(searchQuery.value.toLowerCase())
+      configItem.value.toLowerCase().includes(searchQuery.value.toLowerCase())
     ) {
-      filtered[key] = value
+      filtered[key] = configItem
     }
   })
   
@@ -520,6 +589,67 @@ const getFilteredConfigs = (category: string) => {
 .config-input.modified {
   border-color: #f59e0b;
   background: #fffbeb;
+}
+
+.config-checkbox {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-right: 0.5rem;
+}
+
+.config-select {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  background: white;
+}
+
+.config-select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.config-select.modified {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.config-textarea {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.config-textarea:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.config-textarea.modified {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.config-type {
+  font-size: 0.75rem;
+  color: var(--color-text-2);
+  background: var(--color-background-soft);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  margin-left: 0.5rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
 .config-actions {
