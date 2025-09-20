@@ -130,6 +130,9 @@ describe('Project Discovery API Routes', () => {
     });
 
     test('should validate project name format', async () => {
+      // Mock console.error to verify it was called without polluting output
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
       await request(app)
         .get('/projects/invalid project name!/configs')
         .expect(400);
@@ -137,6 +140,12 @@ describe('Project Discovery API Routes', () => {
       await request(app)
         .get('/projects//configs')
         .expect(400);
+        
+      // Verify error was logged (but silently in tests)
+      expect(consoleSpy).toHaveBeenCalled();
+      
+      // Restore console.error
+      consoleSpy.mockRestore();
     });
 
     test('should handle complex setting names with colons', async () => {
@@ -156,6 +165,9 @@ describe('Project Discovery API Routes', () => {
 
   describe('Error handling', () => {
     test('should handle Redis disconnection gracefully', async () => {
+      // Mock console.error to verify it was called without polluting output
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      
       // Simulate Redis disconnection
       const originalConnected = redisService.isConnected;
       redisService.isConnected = false;
@@ -164,8 +176,14 @@ describe('Project Discovery API Routes', () => {
         .get('/projects')
         .expect(503);
 
+      // Verify error was logged (but silently in tests)
+      expect(consoleSpy).toHaveBeenCalled();
+
       // Restore connection state
       redisService.isConnected = originalConnected;
+      
+      // Restore console.error
+      consoleSpy.mockRestore();
     });
   });
 });

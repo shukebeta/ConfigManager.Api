@@ -114,6 +114,9 @@ describe('Config API Routes', () => {
     });
 
     test('should return 400 for missing value', async () => {
+      // Mock console.error to verify it was called without polluting output
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
       const response = await request(app)
         .post('/redis/test:post:missing')
         .send({}) // No value field
@@ -121,6 +124,12 @@ describe('Config API Routes', () => {
 
       expect(response.body.error).toBe('Bad Request');
       expect(response.body.message).toContain('Value is required');
+      
+      // Verify error was logged (but silently in tests)
+      expect(consoleSpy).toHaveBeenCalled();
+      
+      // Restore console.error
+      consoleSpy.mockRestore();
     });
 
     test('should return 400 for empty key', async () => {
@@ -151,6 +160,9 @@ describe('Config API Routes', () => {
 
   describe('Error Handling', () => {
     test('should handle Redis connection errors gracefully', async () => {
+      // Mock console.error to verify it was called without polluting output
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      
       // Simulate Redis disconnection
       const originalIsConnected = redisService.isConnected;
       redisService.isConnected = false;
@@ -160,9 +172,15 @@ describe('Config API Routes', () => {
         .expect(503);
 
       expect(response.body.error).toBe('Service Unavailable');
+      
+      // Verify error was logged (but silently in tests)
+      expect(consoleSpy).toHaveBeenCalled();
 
       // Restore connection state
       redisService.isConnected = originalIsConnected;
+      
+      // Restore console.error
+      consoleSpy.mockRestore();
     });
   });
 });

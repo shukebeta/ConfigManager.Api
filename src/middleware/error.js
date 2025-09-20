@@ -3,7 +3,7 @@ function errorHandler(err, req, res, next) {
   console.error('Error:', err);
 
   // Redis connection errors
-  if (err.message.includes('Redis client not connected')) {
+  if (err.message && err.message.includes('Redis client not connected')) {
     return res.status(503).json({
       error: 'Service Unavailable',
       message: 'Redis connection not available'
@@ -11,7 +11,7 @@ function errorHandler(err, req, res, next) {
   }
 
   // Redis operation errors
-  if (err.code === 'ECONNREFUSED' || err.message.includes('Redis')) {
+  if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Redis'))) {
     return res.status(503).json({
       error: 'Service Unavailable', 
       message: 'Redis service unavailable'

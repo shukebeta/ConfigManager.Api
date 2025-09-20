@@ -143,6 +143,9 @@ describe('Integration Tests - Full API', () => {
   });
 
   test('error handling for invalid requests', async () => {
+    // Mock console.error to verify it was called without polluting output
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
     // Test invalid JSON body
     const invalidJsonResponse = await request(app)
       .post('/redis/test:invalid')
@@ -150,12 +153,21 @@ describe('Integration Tests - Full API', () => {
       .send('{"invalid": json}') // Invalid JSON
       .expect(400);
 
+    expect(invalidJsonResponse.body.error).toBe('Bad Request');
+    expect(invalidJsonResponse.body.message).toBe('Invalid JSON format');
+    
+    // Verify error was logged (but silently in tests)
+    expect(consoleSpy).toHaveBeenCalled();
+
     // Test non-existent route
     const notFoundResponse = await request(app)
       .get('/nonexistent')
       .expect(404);
 
     expect(notFoundResponse.body.error).toBe('Not Found');
+    
+    // Restore console.error
+    consoleSpy.mockRestore();
   });
 
   test('CORS headers should be present', async () => {

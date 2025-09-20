@@ -140,11 +140,38 @@ class RedisService {
   async getProjectConfigs(project) {
     const client = this.getClient();
     const pattern = `${project}:config:*`;
-    const keys = await client.keys(pattern);
+    const keys = [];
+    
+    // Use SCAN instead of KEYS to avoid blocking Redis
+    const stream = client.scanStream({ 
+      match: pattern, 
+      count: 100 // Process 100 keys per iteration
+    });
+    
+    for await (const keysChunk of stream) {
+      keys.push(...keysChunk);
+    }
+    
+    if (keys.length === 0) {
+      return {};
+    }
+    
+    // Use pipeline for batch GET operations to improve performance
+    const pipeline = client.pipeline();
+    keys.forEach(key => pipeline.get(key));
+    const results = await pipeline.exec();
     
     // Group by category
     const configs = {};
-    for (const key of keys) {
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      const [error, value] = results[i];
+      
+      if (error) {
+        console.error(`Error getting value for key ${key}:`, error);
+        continue;
+      }
+      
       const [, , category, ...settingParts] = key.split(':');
       const setting = settingParts.join(':');
       
@@ -152,8 +179,6 @@ class RedisService {
         configs[category] = {};
       }
       
-      // Get the current value
-      const value = await client.get(key);
       configs[category][setting] = {
         key,
         value,
@@ -167,16 +192,19 @@ class RedisService {
   // Migration method: populate projects set from existing keys
   async migrateExistingProjects() {
     const client = this.getClient();
-    const keys = await client.keys('*:config:*');
-    
-    if (keys.length === 0) {
-      return { migrated: 0, projects: [] };
-    }
-    
     const projects = new Set();
-    for (const key of keys) {
-      const [project] = key.split(':');
-      projects.add(project);
+    
+    // Use SCAN instead of KEYS to avoid blocking Redis
+    const stream = client.scanStream({ 
+      match: '*:config:*', 
+      count: 100 // Process 100 keys per iteration
+    });
+    
+    for await (const keys of stream) {
+      for (const key of keys) {
+        const [project] = key.split(':');
+        projects.add(project);
+      }
     }
     
     // Add all discovered projects to the set
