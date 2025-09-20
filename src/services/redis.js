@@ -209,7 +209,16 @@ class RedisService {
         configs[category] = {};
       }
       
-      configs[category][setting] = value;
+      // Infer type and parse value
+      const type = this._inferConfigType(value);
+      const parsedValue = this._parseValue(value, type);
+      
+      configs[category][setting] = {
+        key: key,
+        value: value,
+        type: type,
+        parsedValue: parsedValue
+      };
     }
     
     return configs;
@@ -281,6 +290,36 @@ class RedisService {
     }
     
     return 'string';
+  }
+
+  // Helper method to parse configuration value based on its type
+  _parseValue(value, type) {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    
+    const strValue = String(value);
+    
+    switch (type) {
+      case 'integer':
+        return parseInt(strValue, 10);
+      case 'float':
+        return parseFloat(strValue);
+      case 'boolean':
+        return /^true$/i.test(strValue);
+      case 'array':
+      case 'object':
+        try {
+          return JSON.parse(strValue);
+        } catch (e) {
+          return strValue; // Fallback to string if parsing fails
+        }
+      case 'loglevel':
+      case 'string':
+      case 'null':
+      default:
+        return strValue;
+    }
   }
 }
 

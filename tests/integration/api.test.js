@@ -174,6 +174,7 @@ describe('Integration Tests - Full API', () => {
   test('CORS headers should be present', async () => {
     const response = await request(app)
       .get('/health')
+      .set('Origin', 'http://localhost:3000') // Simulate cross-origin request
       .expect(200);
 
     // Verify CORS headers exist (specific values depend on configuration)

@@ -47,8 +47,8 @@ describe('Redis Service - Project Discovery', () => {
       expect(projects).toContain('testnewapp');
     });
 
-    test('should not register project for non-config keys', async () => {
-      const key = 'testnewapp:data:something';
+    test('should not register project for single-part keys', async () => {
+      const key = 'singlekeynoproject';
       const value = 'data';
 
       const result = await redisService.setConfigAndPublish(key, value);
@@ -57,9 +57,9 @@ describe('Redis Service - Project Discovery', () => {
       expect(result.published).toBeGreaterThanOrEqual(0);
       expect(result.projectRegistered).toBeNull();
 
-      // Verify project was not registered
+      // Verify no project was registered from this key
       const projects = await redisService.getProjects();
-      expect(projects).not.toContain('testnewapp');
+      expect(projects).not.toContain('singlekeynoproject');
     });
 
     test('should handle existing project registration', async () => {
@@ -94,13 +94,13 @@ describe('Redis Service - Project Discovery', () => {
     test('should return grouped configurations for project', async () => {
       const project = 'testconfigapp';
       
-      // Set up test configurations
-      await redisService.set(`${project}:config:nlog:minlevel`, 'Debug');
-      await redisService.set(`${project}:config:nlog:maxlevel`, 'Fatal');
-      await redisService.set(`${project}:config:llm:timeout`, '30000');
-      await redisService.set(`${project}:config:llm:retries`, '3');
-      await redisService.set(`${project}:config:feature:newui`, 'true');
-      await redisService.set(`${project}:config:database:connection:string`, 'postgresql://localhost');
+      // Set up test configurations with new format: project:keyname
+      await redisService.set(`${project}:nlog:minlevel`, 'Debug');
+      await redisService.set(`${project}:nlog:maxlevel`, 'Fatal');
+      await redisService.set(`${project}:llm:timeout`, '30000');
+      await redisService.set(`${project}:llm:retries`, '3');
+      await redisService.set(`${project}:feature:newui`, 'true');
+      await redisService.set(`${project}:database:connection:string`, 'postgresql://localhost');
 
       const configs = await redisService.getProjectConfigs(project);
 
@@ -112,29 +112,46 @@ describe('Redis Service - Project Discovery', () => {
 
       // Check nlog category
       expect(configs.nlog.minlevel).toEqual({
-        key: `${project}:config:nlog:minlevel`,
+        key: `${project}:nlog:minlevel`,
         value: 'Debug',
-        type: 'loglevel'
+        type: 'loglevel',
+        parsedValue: 'Debug'
       });
-
       expect(configs.nlog.maxlevel).toEqual({
-        key: `${project}:config:nlog:maxlevel`,
+        key: `${project}:nlog:maxlevel`,
         value: 'Fatal',
-        type: 'loglevel'
+        type: 'loglevel',
+        parsedValue: 'Fatal'
       });
 
       // Check llm category
       expect(configs.llm.timeout).toEqual({
-        key: `${project}:config:llm:timeout`,
+        key: `${project}:llm:timeout`,
         value: '30000',
-        type: 'integer'
+        type: 'integer',
+        parsedValue: 30000
+      });
+      expect(configs.llm.retries).toEqual({
+        key: `${project}:llm:retries`,
+        value: '3',
+        type: 'integer',
+        parsedValue: 3
+      });
+
+      // Check feature category
+      expect(configs.feature.newui).toEqual({
+        key: `${project}:feature:newui`,
+        value: 'true',
+        type: 'boolean',
+        parsedValue: true
       });
 
       // Check complex key with colons
       expect(configs.database['connection:string']).toEqual({
-        key: `${project}:config:database:connection:string`,
+        key: `${project}:database:connection:string`,
         value: 'postgresql://localhost',
-        type: 'string'
+        type: 'string',
+        parsedValue: 'postgresql://localhost'
       });
     });
 
@@ -172,12 +189,12 @@ describe('Redis Service - Project Discovery', () => {
     test('should ignore non-config keys', async () => {
       await redisService.set('testapp1:data:something', 'value1');
       await redisService.set('testapp2:cache:key', 'value2');
-      await redisService.set('testapp3:config:setting', 'value3'); // Only this should be found
+      await redisService.set('testapp3:nlog:setting', 'value3'); // Only this should be found
 
       const result = await redisService.migrateExistingProjects();
 
-      expect(result.migrated).toBe(1);
-      expect(result.projects).toEqual(['testapp3']);
+      expect(result.migrated).toBe(3); // All three are valid project:keyname format
+      expect(result.projects).toEqual(['testapp1', 'testapp2', 'testapp3']);
     });
   });
 

@@ -80,7 +80,7 @@ router.get('/:project/configs', async (req, res, next) => {
     res.json({
       project,
       configs,
-      categories: Object.keys(configs).sort(),
+      groups: Object.keys(configs).sort(),
       totalConfigs: configCount
     });
   } catch (error) {

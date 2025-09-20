@@ -41,24 +41,25 @@ describe('RedisService', () => {
   });
 
   test('should handle Redis keys pattern search', async () => {
-    // Set some test data
-    await redisService.set('test:config:app1:setting1', 'value1');
-    await redisService.set('test:config:app1:setting2', 'value2');
-    await redisService.set('test:config:app2:setting1', 'value3');
+    // Set some test data with new format: project:keyname
+    await redisService.set('test:mysql:host', 'localhost');
+    await redisService.set('test:mysql:port', '3306');
+    await redisService.set('test:redis:url', 'redis://localhost');
     await redisService.set('test:other:data', 'value4');
 
-    // Search pattern
-    const configKeys = await redisService.keys('test:config:*');
-    expect(configKeys).toHaveLength(3);
+    // Search pattern for project configs
+    const configKeys = await redisService.keys('test:*');
+    expect(configKeys).toHaveLength(4);
     expect(configKeys).toEqual(expect.arrayContaining([
-      'test:config:app1:setting1',
-      'test:config:app1:setting2', 
-      'test:config:app2:setting1'
+      'test:mysql:host',
+      'test:mysql:port', 
+      'test:redis:url',
+      'test:other:data'
     ]));
 
     // More specific pattern
-    const app1Keys = await redisService.keys('test:config:app1:*');
-    expect(app1Keys).toHaveLength(2);
+    const mysqlKeys = await redisService.keys('test:mysql:*');
+    expect(mysqlKeys).toHaveLength(2);
   });
 
   test('should throw error when not connected', async () => {

@@ -82,37 +82,40 @@ describe('Project Discovery API Routes', () => {
       const project = 'testmyapp';
       
       // Set up test data
-      await redisService.set(`${project}:config:nlog:minlevel`, 'Debug');
-      await redisService.set(`${project}:config:nlog:maxlevel`, 'Fatal');
-      await redisService.set(`${project}:config:llm:timeout`, '30000');
-      await redisService.set(`${project}:config:feature:newui`, 'true');
+      await redisService.set(`${project}:nlog:minlevel`, 'Debug');
+      await redisService.set(`${project}:nlog:maxlevel`, 'Fatal');
+      await redisService.set(`${project}:llm:timeout`, '30000');
+      await redisService.set(`${project}:feature:newui`, 'true');
 
       const response = await request(app)
         .get(`/projects/${project}/configs`)
         .expect(200);
 
       expect(response.body.project).toBe(project);
-      expect(response.body.categories).toEqual(['feature', 'llm', 'nlog']);
+      expect(response.body.groups).toEqual(['feature', 'llm', 'nlog']);
       expect(response.body.totalConfigs).toBe(4);
 
       // Check config structure
       expect(response.body.configs.nlog).toBeDefined();
       expect(response.body.configs.nlog.minlevel).toEqual({
-        key: `${project}:config:nlog:minlevel`,
+        key: `${project}:nlog:minlevel`,
         value: 'Debug',
-        type: 'loglevel'
+        type: 'loglevel',
+        parsedValue: 'Debug'
       });
 
       expect(response.body.configs.llm.timeout).toEqual({
-        key: `${project}:config:llm:timeout`,
+        key: `${project}:llm:timeout`,
         value: '30000',
-        type: 'integer'
+        type: 'integer',
+        parsedValue: 30000
       });
 
       expect(response.body.configs.feature.newui).toEqual({
-        key: `${project}:config:feature:newui`,
+        key: `${project}:feature:newui`,
         value: 'true',
-        type: 'boolean'
+        type: 'boolean',
+        parsedValue: true
       });
     });
 
@@ -124,7 +127,7 @@ describe('Project Discovery API Routes', () => {
       expect(response.body).toEqual({
         project: 'testnonexistent',
         configs: {},
-        categories: [],
+        groups: [],
         totalConfigs: 0
       });
     });
@@ -151,8 +154,8 @@ describe('Project Discovery API Routes', () => {
 
     test('should handle complex setting names with colons', async () => {
       const project = 'testcomplex';
-      await redisService.set(`${project}:config:database:connection:string`, 'postgresql://...');
-      await redisService.set(`${project}:config:auth:jwt:secret:key`, 'secret123');
+      await redisService.set(`${project}:database:connection:string`, 'postgresql://...');
+      await redisService.set(`${project}:auth:jwt:secret:key`, 'secret123');
 
       const response = await request(app)
         .get(`/projects/${project}/configs`)
