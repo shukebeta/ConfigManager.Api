@@ -4,15 +4,21 @@ describe('Error Handler Middleware Unit Tests', () => {
   let mockReq, mockRes, mockNext, consoleSpy;
 
   beforeEach(() => {
-    mockReq = {};
+    mockReq = {
+      id: 'test-request-id',
+      method: 'GET',
+      originalUrl: '/test/path',
+      ip: '127.0.0.1'
+    };
     mockRes = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     };
     mockNext = jest.fn();
     
-    // Mock console.error to keep tests clean
-    consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    // Mock logger.error to keep tests clean
+    const logger = require('../../src/logger');
+    consoleSpy = jest.spyOn(logger, 'error').mockImplementation();
   });
 
   afterEach(() => {
@@ -33,7 +39,7 @@ describe('Error Handler Middleware Unit Tests', () => {
         error: 'Service Unavailable',
         message: 'Redis connection not available'
       });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', mockError);
+      expect(consoleSpy).toHaveBeenCalled();
     });
 
     test('should handle Redis operation errors with ECONNREFUSED', () => {

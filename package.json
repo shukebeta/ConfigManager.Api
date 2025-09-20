@@ -11,25 +11,35 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "ioredis": "^5.3.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "pino": "^9.10.0",
+    "pino-pretty": "^13.1.1",
+    "pino-seq": "^2.1.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "supertest": "^6.3.3",
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ],
     "collectCoverageFrom": [
       "src/**/*.js",
       "!src/index.js"
     ]
   },
-  "keywords": ["redis", "config", "management", "api"],
+  "keywords": [
+    "redis",
+    "config",
+    "management",
+    "api"
+  ],
   "author": "",
   "license": "MIT"
 }

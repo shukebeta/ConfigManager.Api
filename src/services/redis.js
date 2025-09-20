@@ -1,4 +1,5 @@
 const Redis = require('ioredis');
+const logger = require('../logger');
 
 class RedisService {
   constructor() {
@@ -17,17 +18,17 @@ class RedisService {
 
       // Connection event listeners
       this.client.on('connect', () => {
-        console.log('Redis connected');
+        logger.info('Redis connected');
         this.isConnected = true;
       });
 
       this.client.on('error', (err) => {
-        console.error('Redis connection error:', err);
+        logger.error({ err }, 'Redis connection error');
         this.isConnected = false;
       });
 
       this.client.on('close', () => {
-        console.log('Redis connection closed');
+        logger.info('Redis connection closed');
         this.isConnected = false;
       });
 
@@ -36,7 +37,7 @@ class RedisService {
       
       return this.client;
     } catch (error) {
-      console.error('Failed to connect to Redis:', error);
+      logger.error({ err: error }, 'Failed to connect to Redis');
       throw error;
     }
   }
@@ -168,7 +169,7 @@ class RedisService {
       const [error, value] = results[i];
       
       if (error) {
-        console.error(`Error getting value for key ${key}:`, error);
+        logger.error({ err: error, key }, 'Error getting value for key');
         continue;
       }
       

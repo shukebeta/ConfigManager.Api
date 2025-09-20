@@ -101,6 +101,34 @@ curl -X POST http://localhost:3001/redis/newwords.api:config:nlog:minlevel \
 | `REDIS_URL` | redis://localhost:6379 | Redis connection URL |
 | `CORS_ORIGIN` | http://localhost:3000 | Allowed CORS origin |
 | `NODE_ENV` | development | Environment mode |
+| `LOG_LEVEL` | info | Logging level (error, warn, info, debug) |
+| `SEQ_URL` | - | Optional: Seq server URL for structured logging |
+| `SEQ_API_KEY` | - | Optional: Seq API key for authentication |
+
+## Logging
+
+ConfigManager supports two logging modes:
+
+### Console Logging (Default)
+When no `SEQ_URL` is provided, the service uses pretty-formatted console logging ideal for development:
+
+```bash
+[2025-09-20 16:28:20.301 +1200] INFO: ConfigManager Redis Proxy started
+    port: "3001"
+    environment: "development"
+    healthCheck: "http://localhost:3001/health"
+```
+
+### Structured Logging to Seq
+When `SEQ_URL` is configured, the service sends structured logs to your Seq server:
+
+```bash
+# Enable Seq logging
+SEQ_URL=http://your-seq-server:5341
+SEQ_API_KEY=your_optional_api_key
+```
+
+This provides powerful log analysis, searching, and alerting capabilities through Seq's web interface.
 
 ## API Response Format
 

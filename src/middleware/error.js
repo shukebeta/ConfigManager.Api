@@ -1,6 +1,17 @@
+const logger = require('../logger');
+
 // Global error handling middleware
 function errorHandler(err, req, res, next) {
-  console.error('Error:', err);
+  // Structured error logging with request context
+  logger.error({ 
+    err,
+    req: {
+      id: req.id,
+      method: req.method,
+      url: req.originalUrl || req.url,
+      ip: req.ip || (req.connection && req.connection.remoteAddress) || 'unknown'
+    }
+  }, 'Request processing error');
 
   // Redis connection errors
   if (err.message && err.message.includes('Redis client not connected')) {

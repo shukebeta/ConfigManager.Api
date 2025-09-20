@@ -130,8 +130,9 @@ describe('Project Discovery API Routes', () => {
     });
 
     test('should validate project name format', async () => {
-      // Mock console.error to verify it was called without polluting output
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      // Mock logger.error to verify it was called without polluting output
+      const logger = require('../../src/logger');
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
 
       await request(app)
         .get('/projects/invalid project name!/configs')
@@ -142,10 +143,10 @@ describe('Project Discovery API Routes', () => {
         .expect(400);
         
       // Verify error was logged (but silently in tests)
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(loggerSpy).toHaveBeenCalled();
       
-      // Restore console.error
-      consoleSpy.mockRestore();
+      // Restore logger.error
+      loggerSpy.mockRestore();
     });
 
     test('should handle complex setting names with colons', async () => {
@@ -165,8 +166,9 @@ describe('Project Discovery API Routes', () => {
 
   describe('Error handling', () => {
     test('should handle Redis disconnection gracefully', async () => {
-      // Mock console.error to verify it was called without polluting output
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      // Mock logger.error to verify it was called without polluting output
+      const logger = require('../../src/logger');
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
       
       // Simulate Redis disconnection
       const originalConnected = redisService.isConnected;
@@ -177,13 +179,13 @@ describe('Project Discovery API Routes', () => {
         .expect(503);
 
       // Verify error was logged (but silently in tests)
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(loggerSpy).toHaveBeenCalled();
 
       // Restore connection state
       redisService.isConnected = originalConnected;
       
-      // Restore console.error
-      consoleSpy.mockRestore();
+      // Restore logger.error
+      loggerSpy.mockRestore();
     });
   });
 });

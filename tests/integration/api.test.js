@@ -143,8 +143,9 @@ describe('Integration Tests - Full API', () => {
   });
 
   test('error handling for invalid requests', async () => {
-    // Mock console.error to verify it was called without polluting output
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    // Mock logger.error to verify it was called without polluting output
+    const logger = require('../../src/logger');
+    const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
 
     // Test invalid JSON body
     const invalidJsonResponse = await request(app)
@@ -157,7 +158,7 @@ describe('Integration Tests - Full API', () => {
     expect(invalidJsonResponse.body.message).toBe('Invalid JSON format');
     
     // Verify error was logged (but silently in tests)
-    expect(consoleSpy).toHaveBeenCalled();
+    expect(loggerSpy).toHaveBeenCalled();
 
     // Test non-existent route
     const notFoundResponse = await request(app)
@@ -166,8 +167,8 @@ describe('Integration Tests - Full API', () => {
 
     expect(notFoundResponse.body.error).toBe('Not Found');
     
-    // Restore console.error
-    consoleSpy.mockRestore();
+    // Restore logger.error
+    loggerSpy.mockRestore();
   });
 
   test('CORS headers should be present', async () => {

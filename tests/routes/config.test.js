@@ -114,8 +114,9 @@ describe('Config API Routes', () => {
     });
 
     test('should return 400 for missing value', async () => {
-      // Mock console.error to verify it was called without polluting output
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      // Mock logger.error to verify it was called without polluting output
+      const logger = require('../../src/logger');
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
 
       const response = await request(app)
         .post('/redis/test:post:missing')
@@ -126,10 +127,10 @@ describe('Config API Routes', () => {
       expect(response.body.message).toContain('Value is required');
       
       // Verify error was logged (but silently in tests)
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(loggerSpy).toHaveBeenCalled();
       
-      // Restore console.error
-      consoleSpy.mockRestore();
+      // Restore logger.error
+      loggerSpy.mockRestore();
     });
 
     test('should return 400 for empty key', async () => {
@@ -160,8 +161,9 @@ describe('Config API Routes', () => {
 
   describe('Error Handling', () => {
     test('should handle Redis connection errors gracefully', async () => {
-      // Mock console.error to verify it was called without polluting output
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      // Mock logger.error to verify it was called without polluting output
+      const logger = require('../../src/logger');
+      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation();
       
       // Simulate Redis disconnection
       const originalIsConnected = redisService.isConnected;
@@ -174,13 +176,13 @@ describe('Config API Routes', () => {
       expect(response.body.error).toBe('Service Unavailable');
       
       // Verify error was logged (but silently in tests)
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(loggerSpy).toHaveBeenCalled();
 
       // Restore connection state
       redisService.isConnected = originalIsConnected;
       
-      // Restore console.error
-      consoleSpy.mockRestore();
+      // Restore logger.error
+      loggerSpy.mockRestore();
     });
   });
 });
