@@ -29,7 +29,23 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-
+// POST /projects/migrate - Manually trigger project migration from existing keys
+router.post('/migrate', async (req, res, next) => {
+  try {
+    const migrationResult = await redisService.migrateExistingProjects();
+    
+    res.json({
+      success: true,
+      migrated: migrationResult.migrated,
+      projects: migrationResult.projects,
+      message: migrationResult.migrated > 0 
+        ? `Successfully migrated ${migrationResult.migrated} projects`
+        : 'No additional projects found to migrate'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Handle missing project parameter (/projects/configs instead of /projects/:project/configs)
 router.get('/configs', (req, res) => {

@@ -64,4 +64,36 @@ router.post('/:key', async (req, res, next) => {
   }
 });
 
+// DELETE /redis/:key - Delete configuration value
+router.delete('/:key', async (req, res, next) => {
+  try {
+    const { key } = req.params;
+    
+    // Basic validation
+    if (!key || key.trim() === '') {
+      const error = new Error('Key parameter is required');
+      error.type = 'validation';
+      throw error;
+    }
+
+    // Check if key exists before deletion
+    const existsBefore = await redisService.get(key);
+    
+    // Execute DELETE + PUBLISH
+    const result = await redisService.deleteConfigAndPublish(key);
+    
+    res.json({
+      success: true,
+      key,
+      existed: existsBefore !== null,
+      operations: {
+        deleted: result.deleted, // del returns number of keys deleted
+        published: result.published // publish returns number of clients that received the message
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

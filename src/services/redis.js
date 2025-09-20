@@ -103,11 +103,12 @@ class RedisService {
     pipeline.set(key, value);
     pipeline.publish(key, value);
     
-    // Auto-register project if this is a config key
-    const [project, type, ...rest] = key.split(':');
-    const isConfigKey = type === 'config' && rest.length > 0;
-    if (isConfigKey) {
+    // Auto-register project from key format: project:keyname
+    const [project, ...keyParts] = key.split(':');
+    let hasProjectRegistration = false;
+    if (project && keyParts.length > 0) {
       pipeline.sadd('config:projects', project);
+      hasProjectRegistration = true;
     }
     
     const results = await pipeline.exec();
@@ -122,7 +123,30 @@ class RedisService {
     return {
       set: results[0][1],
       published: results[1][1],
-      projectRegistered: isConfigKey ? results[2][1] : null
+      projectRegistered: hasProjectRegistration ? results[2][1] : null
+    };
+  }
+
+  async deleteConfigAndPublish(key) {
+    const client = this.getClient();
+    
+    // Use pipeline to ensure atomicity
+    const pipeline = client.pipeline();
+    pipeline.del(key);
+    pipeline.publish(key, '__DELETED__'); // Special value to indicate deletion
+    
+    const results = await pipeline.exec();
+    
+    // Check if all operations succeeded
+    for (const [err, result] of results) {
+      if (err) {
+        throw new Error(`Pipeline operation failed: ${err.message}`);
+      }
+    }
+    
+    return {
+      deleted: results[0][1], // del returns number of keys deleted
+      published: results[1][1] // publish returns number of clients that received the message
     };
   }
 
@@ -140,7 +164,7 @@ class RedisService {
 
   async getProjectConfigs(project) {
     const client = this.getClient();
-    const pattern = `${project}:config:*`;
+    const pattern = `${project}:*`;
     const keys = [];
     
     // Use SCAN instead of KEYS to avoid blocking Redis
@@ -173,18 +197,19 @@ class RedisService {
         continue;
       }
       
-      const [, , category, ...settingParts] = key.split(':');
-      const setting = settingParts.join(':');
+      // New format: project:keyname (where keyname can be multi-level)
+      const [, ...keyParts] = key.split(':');
+      const keyname = keyParts.join(':');
+      
+      // Extract category from keyname (first part)
+      const category = keyParts[0] || 'general';
+      const setting = keyParts.length > 1 ? keyParts.slice(1).join(':') : keyname;
       
       if (!configs[category]) {
         configs[category] = {};
       }
       
-      configs[category][setting] = {
-        key,
-        value,
-        type: this._inferConfigType(value)
-      };
+      configs[category][setting] = value;
     }
     
     return configs;
@@ -197,14 +222,20 @@ class RedisService {
     
     // Use SCAN instead of KEYS to avoid blocking Redis
     const stream = client.scanStream({ 
-      match: '*:config:*', 
+      match: '*:*', // Match project:keyname pattern
       count: 100 // Process 100 keys per iteration
     });
     
     for await (const keys of stream) {
       for (const key of keys) {
-        const [project] = key.split(':');
-        projects.add(project);
+        // Skip system keys like config:projects
+        if (key.startsWith('config:')) continue;
+        
+        const [project, ...keyParts] = key.split(':');
+        // Only include keys that have at least one keyname part
+        if (project && keyParts.length > 0) {
+          projects.add(project);
+        }
       }
     }
     
