@@ -1,6 +1,8 @@
-# ConfigManager Redis Proxy
+# ConfigManager.Api
 
-A lightweight REST API proxy for Redis configuration management.
+A lightweight REST API for Redis-based configuration management with real-time updates and project isolation.
+
+> Part of the [ConfigManager ecosystem](../README.md) - providing the backend API for configuration management.
 
 ## Features
 
@@ -18,7 +20,7 @@ A lightweight REST API proxy for Redis configuration management.
 
 ### Installation
 ```bash
-cd src/ConfigManager.Web/redis-proxy
+cd ConfigManager.Api
 npm install
 ```
 
@@ -73,9 +75,9 @@ curl -X POST http://localhost:3001/redis/newwords.api:config:nlog:minlevel \
 
 ## Testing with NewWords.Api
 
-1. **Start Redis Proxy**:
+1. **Start ConfigManager.Api**:
    ```bash
-   cd src/ConfigManager.Web/redis-proxy
+   cd ConfigManager.Api
    npm run dev
    ```
 
@@ -113,7 +115,7 @@ ConfigManager supports two logging modes:
 When no `SEQ_URL` is provided, the service uses pretty-formatted console logging ideal for development:
 
 ```bash
-[2025-09-20 16:28:20.301 +1200] INFO: ConfigManager Redis Proxy started
+[2025-09-20 16:28:20.301 +1200] INFO: ConfigManager.Api started
     port: "3001"
     environment: "development"
     healthCheck: "http://localhost:3001/health"
@@ -161,9 +163,25 @@ This provides powerful log analysis, searching, and alerting capabilities throug
 - Connection retry logic built-in
 - All values stored as strings in Redis
 
+## ConfigManager Ecosystem
+
+ConfigManager.Api is part of a comprehensive configuration management system:
+
+- **[ConfigManager.Provider](../ConfigManager.Provider/)** - .NET Configuration Provider for seamless integration
+- **[ConfigManager.Web](../ConfigManager.Web/)** - Web UI for visual configuration management
+- **ConfigManager.Api** - This REST API for configuration operations
+
 ## Next Steps
 
-This is Phase 2.1 of the ConfigManager.Web project. Next phases will add:
-- Project discovery (`GET /redis/projects`)
-- Configuration categorization (`GET /redis/:project/configs`)  
-- Configuration history and rollback features
+Upcoming features:
+- Project discovery (`GET /projects`)
+- Configuration categorization (`GET /:project/configs`)  
+- Configuration history and rollback
+- Enhanced project management endpoints
+- Integration with ConfigManager.Web UI
+
+## Related Documentation
+
+- [Overall ConfigManager Documentation](../README.md)
+- [ConfigManager.Provider Integration Guide](../ConfigManager.Provider/README.md)
+- [Real-time Configuration Examples](../ConfigManager.Provider/README.md#end-to-end-example-real-time-weather-app)

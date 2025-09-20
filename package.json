@@ -1,7 +1,7 @@
 {
-  "name": "config-manager-redis-proxy",
+  "name": "config-manager-api",
   "version": "1.0.0",
-  "description": "Redis proxy API for ConfigManager.Web",
+  "description": "REST API for ConfigManager - Configuration management with real-time updates",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -37,8 +37,11 @@
   "keywords": [
     "redis",
     "config",
+    "configuration",
     "management",
-    "api"
+    "api",
+    "real-time",
+    "microservices"
   ],
   "author": "",
   "license": "MIT"
