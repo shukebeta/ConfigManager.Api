@@ -80,6 +80,23 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }
 
+  async function deleteConfig(key: string) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      await apiClient.deleteConfig(key)
+      // Refresh project configs to get updated data
+      await fetchProjectConfigs()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete config'
+      console.error('Error deleting config:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function clearError() {
     error.value = null
   }
@@ -101,6 +118,7 @@ export const useProjectsStore = defineStore('projects', () => {
     selectProject,
     fetchProjectConfigs,
     updateConfig,
+    deleteConfig,
     clearError
   }
 })

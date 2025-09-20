@@ -36,6 +36,16 @@ export interface SetConfigResponse {
   }
 }
 
+export interface DeleteConfigResponse {
+  success: boolean
+  key: string
+  existed: boolean
+  operations: {
+    deleted: number
+    published: number
+  }
+}
+
 export interface ApiError {
   error: string
   message: string

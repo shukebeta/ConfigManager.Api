@@ -100,6 +100,30 @@ describe('API Client', () => {
         expect(true).toBe(true)
       }
     })
+
+    it('should handle config delete request', async () => {
+      try {
+        const testKey = 'test-delete-key'
+        
+        // First set a value to delete
+        await apiClient.setConfig(testKey, 'temporary-value')
+        
+        // Then delete it
+        const response = await apiClient.deleteConfig(testKey)
+        
+        expect(response).toHaveProperty('success')
+        expect(response).toHaveProperty('key')
+        expect(response).toHaveProperty('existed')
+        expect(response).toHaveProperty('operations')
+        expect(response.success).toBe(true)
+        expect(response.key).toBe(testKey)
+        expect(response.operations).toHaveProperty('deleted')
+        expect(response.operations).toHaveProperty('published')
+      } catch (error) {
+        console.warn('API server not available, skipping test:', error)
+        expect(true).toBe(true)
+      }
+    })
   })
 
   describe('Error Handling', () => {

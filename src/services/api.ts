@@ -3,7 +3,8 @@ import type {
   ProjectsResponse,
   ProjectConfigsResponse,
   ConfigItemResponse,
-  SetConfigResponse
+  SetConfigResponse,
+  DeleteConfigResponse
 } from '@/types/api'
 
 class ApiClient {
@@ -59,6 +60,13 @@ class ApiClient {
     const response: AxiosResponse<SetConfigResponse> = await this.client.post(
       `/redis/${encodeURIComponent(key)}`,
       { value }
+    )
+    return response.data
+  }
+
+  async deleteConfig(key: string): Promise<DeleteConfigResponse> {
+    const response: AxiosResponse<DeleteConfigResponse> = await this.client.delete(
+      `/redis/${encodeURIComponent(key)}`
     )
     return response.data
   }

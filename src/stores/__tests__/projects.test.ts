@@ -9,6 +9,7 @@ vi.mock('@/services/api', () => ({
     getProjects: vi.fn(),
     getProjectConfigs: vi.fn(),
     setConfig: vi.fn(),
+    deleteConfig: vi.fn(),
   },
 }))
 
@@ -143,6 +144,47 @@ describe('Projects Store', () => {
     
     await expect(store.updateConfig('key', 'value')).rejects.toThrow('Update failed')
     expect(store.error).toBe('Update failed')
+  })
+
+  it('should delete config successfully', async () => {
+    const store = useProjectsStore()
+    store.selectedProject = 'project1'
+    
+    const mockDeleteResponse = {
+      success: true,
+      key: 'db.host',
+      existed: true,
+      operations: { deleted: 1, published: 1 }
+    }
+    
+    const mockConfigsResponse = {
+      project: 'project1',
+      configs: {
+        database: {} // Empty after deletion
+      },
+      categories: ['database'],
+      totalConfigs: 0
+    }
+    
+    mockApiClient.deleteConfig.mockResolvedValue(mockDeleteResponse)
+    mockApiClient.getProjectConfigs.mockResolvedValue(mockConfigsResponse)
+    
+    await store.deleteConfig('db.host')
+    
+    expect(mockApiClient.deleteConfig).toHaveBeenCalledWith('db.host')
+    expect(mockApiClient.getProjectConfigs).toHaveBeenCalledWith('project1')
+    expect(store.error).toBeNull()
+  })
+
+  it('should handle delete config error', async () => {
+    const store = useProjectsStore()
+    store.selectedProject = 'project1'
+    
+    const mockError = new Error('Delete failed')
+    mockApiClient.deleteConfig.mockRejectedValue(mockError)
+    
+    await expect(store.deleteConfig('key')).rejects.toThrow('Delete failed')
+    expect(store.error).toBe('Delete failed')
   })
 
   it('should clear error', () => {

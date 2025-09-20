@@ -5,6 +5,12 @@
         Configurations for <span class="project-name">{{ selectedProject }}</span>
       </h2>
       <div class="header-actions">
+        <button 
+          @click="showAddDialog = true" 
+          class="add-btn"
+        >
+          Add Configuration
+        </button>
         <button @click="refreshConfigs" :disabled="loading" class="refresh-btn">
           <span v-if="loading">Loading...</span>
           <span v-else>Refresh</span>
@@ -90,12 +96,41 @@
                 >
                   Reset
                 </button>
+                <button
+                  @click="handleDeleteConfig(String(key))"
+                  class="delete-btn"
+                  title="Delete this configuration"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Add Configuration Dialog -->
+    <AddConfigDialog
+      :show="showAddDialog"
+      :selected-project="selectedProject"
+      @confirm="handleAddConfig"
+      @cancel="showAddDialog = false"
+    />
+
+    <!-- Delete Confirmation Dialog -->
+    <ConfirmDialog
+      :show="showDeleteDialog"
+      title="Delete Configuration"
+      message="Are you sure you want to delete this configuration? This action cannot be undone."
+      confirm-text="Delete"
+      loading-text="Deleting..."
+      :is-danger="true"
+      :config-key="configToDelete"
+      @confirm="confirmDeleteConfig"
+      @cancel="cancelDeleteConfig"
+      ref="deleteDialog"
+    />
   </div>
 </template>
 
@@ -103,6 +138,8 @@
 import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useProjectsStore } from '@/stores/projects'
+import AddConfigDialog from './AddConfigDialog.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 const projectsStore = useProjectsStore()
 const {
@@ -114,7 +151,7 @@ const {
   categories,
   configsByCategory
 } = storeToRefs(projectsStore)
-const { fetchProjectConfigs, updateConfig, clearError } = projectsStore
+const { fetchProjectConfigs, updateConfig, deleteConfig, clearError } = projectsStore
 
 // Local state for editable configs
 const editableConfigs = ref<Record<string, string>>({})
@@ -122,6 +159,12 @@ const editableConfigs = ref<Record<string, string>>({})
 // Search and filter state
 const searchQuery = ref('')
 const selectedCategory = ref('')
+
+// Dialog state
+const showAddDialog = ref(false)
+const showDeleteDialog = ref(false)
+const configToDelete = ref('')
+const deleteDialog = ref()
 
 // Computed properties
 const hasConfigs = computed(() => {
@@ -197,6 +240,44 @@ const refreshConfigs = async () => {
   await fetchProjectConfigs()
 }
 
+// Handle adding new configuration
+const handleAddConfig = async (data: { key: string; value: string }) => {
+  try {
+    await updateConfig(data.key, data.value)
+    showAddDialog.value = false
+  } catch (err) {
+    console.error('Failed to add config:', err)
+    // Error is handled by the store
+  }
+}
+
+// Handle delete configuration request
+const handleDeleteConfig = (key: string) => {
+  configToDelete.value = key
+  showDeleteDialog.value = true
+}
+
+// Confirm delete configuration
+const confirmDeleteConfig = async () => {
+  try {
+    await deleteConfig(configToDelete.value)
+    showDeleteDialog.value = false
+    configToDelete.value = ''
+    deleteDialog.value?.resetLoading()
+  } catch (err) {
+    console.error('Failed to delete config:', err)
+    deleteDialog.value?.resetLoading()
+    // Error is handled by the store
+  }
+}
+
+// Cancel delete configuration
+const cancelDeleteConfig = () => {
+  showDeleteDialog.value = false
+  configToDelete.value = ''
+  deleteDialog.value?.resetLoading()
+}
+
 // Helper function to get filtered configs for a category
 const getFilteredConfigs = (category: string) => {
   const configs = configsByCategory.value[category] || {}
@@ -250,6 +331,7 @@ const getFilteredConfigs = (category: string) => {
   gap: 0.5rem;
 }
 
+.add-btn,
 .refresh-btn {
   padding: 0.5rem 1rem;
   background: var(--color-background-mute);
@@ -259,10 +341,22 @@ const getFilteredConfigs = (category: string) => {
   transition: background-color 0.2s;
 }
 
+.add-btn {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.add-btn:hover:not(:disabled) {
+  background: #059669;
+  border-color: #059669;
+}
+
 .refresh-btn:hover:not(:disabled) {
   background: var(--color-background-soft);
 }
 
+.add-btn:disabled,
 .refresh-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -434,7 +528,8 @@ const getFilteredConfigs = (category: string) => {
 }
 
 .save-btn,
-.reset-btn {
+.reset-btn,
+.delete-btn {
   padding: 0.25rem 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: 4px;
@@ -465,6 +560,17 @@ const getFilteredConfigs = (category: string) => {
 
 .reset-btn:hover {
   background: var(--color-background-mute);
+}
+
+.delete-btn {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+.delete-btn:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
 }
 
 @media (max-width: 768px) {
