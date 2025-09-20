@@ -72,51 +72,5 @@ router.get('/:project/configs', async (req, res, next) => {
   }
 });
 
-// POST /projects/:project/migrate - Manually trigger project migration/registration
-router.post('/:project/migrate', async (req, res, next) => {
-  try {
-    const { project } = req.params;
-    
-    // Basic validation
-    if (!project || project.trim() === '') {
-      const error = new Error('Project parameter is required');
-      error.type = 'validation';
-      throw error;
-    }
-    
-    // Sanitize project name (alphanumeric, hyphens, dots, underscores, colons only)
-    if (!/^[a-zA-Z0-9._:-]+$/.test(project)) {
-      const error = new Error('Invalid project name format');
-      error.type = 'validation';
-      throw error;
-    }
-    
-    // Check if project has any config keys
-    const pattern = `${project}:config:*`;
-    const keys = await redisService.keys(pattern);
-    
-    if (keys.length === 0) {
-      return res.json({
-        project,
-        migrated: false,
-        message: 'No configuration keys found for this project',
-        configKeys: []
-      });
-    }
-    
-    // Register the project
-    const added = await redisService.sadd('config:projects', project);
-    
-    res.json({
-      project,
-      migrated: true,
-      alreadyRegistered: added === 0,
-      configKeys: keys.sort(),
-      configCount: keys.length
-    });
-  } catch (error) {
-    next(error);
-  }
-});
 
 module.exports = router;

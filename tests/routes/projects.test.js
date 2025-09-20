@@ -153,68 +153,6 @@ describe('Project Discovery API Routes', () => {
     });
   });
 
-  describe('POST /projects/:project/migrate', () => {
-    test('should migrate project with existing config keys', async () => {
-      const project = 'testmigrateapp';
-      
-      // Create config keys
-      await redisService.set(`${project}:config:nlog:level`, 'Info');
-      await redisService.set(`${project}:config:feature:enabled`, 'true');
-
-      const response = await request(app)
-        .post(`/projects/${project}/migrate`)
-        .expect(200);
-
-      expect(response.body).toEqual({
-        project,
-        migrated: true,
-        alreadyRegistered: false,
-        configKeys: [
-          `${project}:config:feature:enabled`,
-          `${project}:config:nlog:level`
-        ],
-        configCount: 2
-      });
-
-      // Verify project was added to set
-      const projects = await redisService.getProjects();
-      expect(projects).toContain(project);
-    });
-
-    test('should handle already registered project', async () => {
-      const project = 'testexisting';
-      
-      // Pre-register project
-      await redisService.sadd('config:projects', project);
-      await redisService.set(`${project}:config:test:value`, '123');
-
-      const response = await request(app)
-        .post(`/projects/${project}/migrate`)
-        .expect(200);
-
-      expect(response.body.alreadyRegistered).toBe(true);
-      expect(response.body.migrated).toBe(true);
-    });
-
-    test('should handle project with no config keys', async () => {
-      const response = await request(app)
-        .post('/projects/testempty/migrate')
-        .expect(200);
-
-      expect(response.body).toEqual({
-        project: 'testempty',
-        migrated: false,
-        message: 'No configuration keys found for this project',
-        configKeys: []
-      });
-    });
-
-    test('should validate project name', async () => {
-      await request(app)
-        .post('/projects/invalid name!/migrate')
-        .expect(400);
-    });
-  });
 
   describe('Error handling', () => {
     test('should handle Redis disconnection gracefully', async () => {
