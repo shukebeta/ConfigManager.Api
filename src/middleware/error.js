@@ -45,10 +45,31 @@ function errorHandler(err, req, res, next) {
     });
   }
 
+  // Key already exists errors
+  if (err.type === 'key_already_exists') {
+    return res.status(400).json({
+      error: 'key_already_exists',
+      message: err.message,
+      suggestion: err.suggestion
+    });
+  }
+
+  // Naming conflict errors
+  if (err.type === 'naming_conflict') {
+    return res.status(400).json({
+      error: 'naming_conflict',
+      message: err.message,
+      conflictType: err.conflictType,
+      conflictingKey: err.conflictingKey,
+      conflictingKeys: err.conflictingKeys,
+      suggestion: err.suggestion
+    });
+  }
+
   // Default server errors
   res.status(500).json({
     error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    message: err.message // Always show the actual error message for debugging
   });
 }
 

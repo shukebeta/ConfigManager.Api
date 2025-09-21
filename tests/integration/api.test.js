@@ -59,9 +59,9 @@ describe('Integration Tests - Full API', () => {
     expect(getResponse.body.value).toBe(initialValue);
     expect(getResponse.body.exists).toBe(true);
 
-    // 3. Update configuration
+    // 3. Update configuration (use PUT for updates)
     const updateResponse = await request(app)
-      .post(`/redis/${configKey}`)
+      .put(`/redis/${configKey}`)
       .send({ value: updatedValue })
       .expect(200);
 

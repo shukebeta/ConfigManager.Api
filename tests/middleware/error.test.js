@@ -93,7 +93,7 @@ describe('Error Handler Middleware Unit Tests', () => {
       process.env.NODE_ENV = 'development';
 
       const mockError = { 
-        message: 'Something went wrong',
+        message: 'Internal error details',
         stack: 'Error stack trace'
       };
 
@@ -102,7 +102,7 @@ describe('Error Handler Middleware Unit Tests', () => {
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'Internal Server Error',
-        message: 'Something went wrong'
+        message: 'Internal error details'
       });
 
       process.env.NODE_ENV = originalEnv;
@@ -122,7 +122,7 @@ describe('Error Handler Middleware Unit Tests', () => {
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'Internal Server Error',
-        message: 'Something went wrong'
+        message: 'Internal error details'
       });
 
       process.env.NODE_ENV = originalEnv;

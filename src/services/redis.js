@@ -321,6 +321,64 @@ class RedisService {
         return strValue;
     }
   }
+
+  // Naming conflict detection for configuration keys
+  async detectNamingConflicts(key) {
+    const client = this.getClient();
+    
+    // Parse key structure
+    const keyParts = key.split(':');
+    
+    if (keyParts.length < 2) {
+      // Single part key, no conflicts possible
+      return { conflict: false };
+    }
+    
+    // Check for parent key conflicts (Scenario A: parent exists, trying to add child)
+    for (let i = keyParts.length - 1; i > 1; i--) {
+      const parentKey = keyParts.slice(0, i).join(':');
+      const exists = await client.exists(parentKey);
+      
+      if (exists) {
+        return {
+          conflict: true,
+          type: 'parent_exists',
+          conflictingKey: parentKey,
+          message: `Key '${key}' conflicts with existing parent key '${parentKey}'`,
+          suggestion: 'Consider using a different naming structure or confirm to continue'
+        };
+      }
+    }
+    
+    // Check for child key conflicts (Scenario B: children exist, trying to add parent)
+    const pattern = `${key}:*`;
+    const childKeys = await client.keys(pattern);
+    
+    if (childKeys.length > 0) {
+      return {
+        conflict: true,
+        type: 'children_exist',
+        conflictingKeys: childKeys,
+        message: `Key '${key}' conflicts with existing child keys: ${childKeys.join(', ')}`,
+        suggestion: 'Consider using a different naming structure or confirm to continue'
+      };
+    }
+    
+    return { conflict: false };
+  }
+
+  // Check if a key already exists (for duplicate prevention)
+  async checkKeyExists(key) {
+    const client = this.getClient();
+    const exists = await client.exists(key);
+    const keyExists = exists === 1;
+    
+    return {
+      exists: keyExists,
+      message: keyExists ? `Configuration key '${key}' already exists` : null,
+      suggestion: keyExists ? 'Use PUT to update existing configuration instead of POST' : null
+    };
+  }
 }
 
 // Singleton pattern

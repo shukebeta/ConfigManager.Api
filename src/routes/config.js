@@ -27,8 +27,80 @@ router.get('/:key', async (req, res, next) => {
   }
 });
 
-// POST /redis/:key - Set configuration value (SET + PUBLISH)
+// POST /redis/:key - Create new configuration value (SET + PUBLISH)
 router.post('/:key', async (req, res, next) => {
+  try {
+    const { key } = req.params;
+    const { value } = req.body;
+    const forceAdd = req.query.forceAdd === 'true';
+    
+    // Basic validation
+    if (!key || key.trim() === '') {
+      const error = new Error('Key parameter is required');
+      error.type = 'validation';
+      throw error;
+    }
+
+    if (value === undefined) {
+      const error = new Error('Value is required in request body');
+      error.type = 'validation';
+      throw error;
+    }
+
+    // Validation checks (skip if forceAdd is true)
+    if (!forceAdd) {
+      // Check if key already exists
+      const keyCheck = await redisService.checkKeyExists(key);
+      if (keyCheck.exists) {
+        const error = new Error(keyCheck.message);
+        error.type = 'key_already_exists';
+        error.suggestion = keyCheck.suggestion;
+        throw error;
+      }
+
+      // Check for naming conflicts
+      const conflictResult = await redisService.detectNamingConflicts(key);
+      if (conflictResult.conflict) {
+        const error = new Error(conflictResult.message);
+        error.type = 'naming_conflict';
+        error.conflictType = conflictResult.type;
+        error.conflictingKey = conflictResult.conflictingKey;
+        error.conflictingKeys = conflictResult.conflictingKeys;
+        error.suggestion = conflictResult.suggestion;
+        throw error;
+      }
+    }
+
+    // Execute SET + PUBLISH + auto-register project
+    const result = await redisService.setConfigAndPublish(key, String(value));
+    
+    const response = {
+      success: true,
+      key,
+      value: String(value),
+      operations: {
+        set: result.set === 'OK',
+        published: result.published, // publish returns number of clients that received the message
+        projectRegistered: result.projectRegistered !== null ? result.projectRegistered >= 0 : null
+      }
+    };
+
+    // Add warning if conflicts were bypassed
+    if (forceAdd) {
+      response.warning = {
+        type: 'conflicts_bypassed',
+        message: 'Configuration added with forceAdd=true, potential naming conflicts not checked'
+      };
+    }
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /redis/:key - Update existing configuration value (SET + PUBLISH)
+router.put('/:key', async (req, res, next) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
@@ -46,7 +118,7 @@ router.post('/:key', async (req, res, next) => {
       throw error;
     }
 
-    // Execute SET + PUBLISH + auto-register project
+    // Execute SET + PUBLISH + auto-register project (PUT allows create or update)
     const result = await redisService.setConfigAndPublish(key, String(value));
     
     res.json({
@@ -55,7 +127,7 @@ router.post('/:key', async (req, res, next) => {
       value: String(value),
       operations: {
         set: result.set === 'OK',
-        published: result.published, // publish returns number of clients that received the message
+        published: result.published,
         projectRegistered: result.projectRegistered !== null ? result.projectRegistered >= 0 : null
       }
     });
