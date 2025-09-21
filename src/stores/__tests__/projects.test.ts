@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useProjectsStore } from '../projects'
 import apiClient from '@/services/api'
@@ -16,9 +16,18 @@ vi.mock('@/services/api', () => ({
 const mockApiClient = vi.mocked(apiClient)
 
 describe('Projects Store', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    // Spy on console.error and silence it during tests
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    // Restore original console.error functionality
+    consoleErrorSpy.mockRestore()
   })
 
   it('should initialize with empty state', () => {
@@ -63,6 +72,9 @@ describe('Projects Store', () => {
     expect(store.projects).toEqual([])
     expect(store.loading).toBe(false)
     expect(store.error).toBe('API Error')
+    
+    // Verify error was logged (but silenced by our spy)
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching projects:', mockError)
   })
 
   it('should select project and fetch configs', async () => {
@@ -103,6 +115,9 @@ describe('Projects Store', () => {
     expect(store.selectedProject).toBe('project1')
     expect(store.error).toBe('Config fetch error')
     expect(store.projectConfigs).toBeNull()
+    
+    // Verify error was logged (but silenced by our spy)
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching project configs:', mockError)
   })
 
   it('should update config successfully', async () => {
@@ -149,6 +164,9 @@ describe('Projects Store', () => {
     
     await expect(store.updateConfig('key', 'value')).rejects.toThrow('Update failed')
     expect(store.error).toBe('Update failed')
+    
+    // Verify error was logged (but silenced by our spy)
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error updating config:', mockError)
   })
 
   it('should delete config successfully', async () => {
@@ -190,6 +208,9 @@ describe('Projects Store', () => {
     
     await expect(store.deleteConfig('key')).rejects.toThrow('Delete failed')
     expect(store.error).toBe('Delete failed')
+    
+    // Verify error was logged (but silenced by our spy)
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error deleting config:', mockError)
   })
 
   it('should clear error', () => {

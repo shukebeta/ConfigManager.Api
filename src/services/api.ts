@@ -56,8 +56,19 @@ class ApiClient {
     return response.data
   }
 
-  async setConfig(key: string, value: string): Promise<SetConfigResponse> {
-    const response: AxiosResponse<SetConfigResponse> = await this.client.post(
+  async setConfig(key: string, value: string, options?: { forceAdd?: boolean }): Promise<SetConfigResponse> {
+    const params = new URLSearchParams()
+    if (options?.forceAdd) {
+      params.set('forceAdd', 'true')
+    }
+    
+    const url = `/redis/${encodeURIComponent(key)}${params.toString() ? '?' + params.toString() : ''}`
+    const response: AxiosResponse<SetConfigResponse> = await this.client.post(url, { value })
+    return response.data
+  }
+
+  async updateConfig(key: string, value: string): Promise<SetConfigResponse> {
+    const response: AxiosResponse<SetConfigResponse> = await this.client.put(
       `/redis/${encodeURIComponent(key)}`,
       { value }
     )

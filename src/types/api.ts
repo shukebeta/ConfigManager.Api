@@ -12,7 +12,7 @@ export interface ConfigItem {
   key: string
   value: string
   type: 'string' | 'integer' | 'float' | 'boolean' | 'loglevel' | 'array' | 'object' | 'null'
-  parsedValue: any
+  parsedValue: string | number | boolean | object | null
 }
 
 export interface ConfigGroup {

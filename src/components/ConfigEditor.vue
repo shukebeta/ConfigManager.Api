@@ -193,6 +193,17 @@
       @cancel="cancelDeleteConfig"
       ref="deleteDialog"
     />
+
+    <!-- Conflict Confirmation Dialog -->
+    <ConflictConfirmDialog
+      :show="showConflictDialog"
+      :conflict="conflictDetectionResult ? ConflictDetector.formatConflictForUI(conflictDetectionResult) : null"
+      :new-config-info="pendingConfigData ? { key: pendingConfigData.key, value: pendingConfigData.value } : null"
+      :loading="conflictDialogLoading"
+      @confirm="handleConflictConfirm"
+      @cancel="handleConflictCancel"
+      @edit-existing="handleConflictEditExisting"
+    />
   </div>
 </template>
 
@@ -202,6 +213,10 @@ import { storeToRefs } from 'pinia'
 import { useProjectsStore } from '@/stores/projects'
 import AddConfigDialog from './AddConfigDialog.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
+import ConflictConfirmDialog from './ConflictConfirmDialog.vue'
+import { ConflictDetector } from '@/utils/ConflictDetector'
+import type { ConflictDetectionResult } from '@/utils/ConflictDetector'
+import type { ConfigItem } from '@/types/api'
 
 const projectsStore = useProjectsStore()
 const {
@@ -225,8 +240,14 @@ const selectedCategory = ref('')
 // Dialog state
 const showAddDialog = ref(false)
 const showDeleteDialog = ref(false)
+const showConflictDialog = ref(false)
 const configToDelete = ref('')
 const deleteDialog = ref()
+
+// Conflict detection state
+const pendingConfigData = ref<{ key: string; value: string } | null>(null)
+const conflictDetectionResult = ref<ConflictDetectionResult | null>(null)
+const conflictDialogLoading = ref(false)
 
 // Computed properties
 const hasConfigs = computed(() => {
@@ -311,13 +332,99 @@ const refreshConfigs = async () => {
 
 // Handle adding new configuration
 const handleAddConfig = async (data: { key: string; value: string }) => {
-  try {
-    await updateConfig(data.key, data.value)
-    showAddDialog.value = false
-  } catch (err) {
-    console.error('Failed to add config:', err)
-    // Error is handled by the store
+  // Validate key format first
+  const formatValidation = ConflictDetector.validateKeyFormat(data.key)
+  if (!formatValidation.valid) {
+    alert(`Invalid key format: ${formatValidation.message}`)
+    return
   }
+
+  // Detect conflicts using existing configuration data
+  if (selectedProject.value && configsByGroup.value) {
+    const conflictResult = ConflictDetector.detectConflicts(
+      data.key,
+      configsByGroup.value,
+      selectedProject.value
+    )
+
+    if (conflictResult.conflict) {
+      // Store pending data and show conflict dialog
+      pendingConfigData.value = data
+      conflictDetectionResult.value = conflictResult
+      showConflictDialog.value = true
+      showAddDialog.value = false
+      return
+    }
+  }
+
+  // No conflicts detected, proceed with adding
+  await proceedWithAddConfig(data, false)
+}
+
+// Proceed with adding configuration (with optional forceAdd)
+const proceedWithAddConfig = async (data: { key: string; value: string }, forceAdd = false) => {
+  try {
+    conflictDialogLoading.value = true
+    
+    // Use different API endpoints based on operation
+    const apiClient = (await import('@/services/api')).default
+    
+    if (forceAdd) {
+      // Use POST with forceAdd=true to bypass conflict detection
+      await apiClient.setConfig(data.key, data.value, { forceAdd: true })
+    } else {
+      // Use PUT for normal create/update
+      await apiClient.updateConfig(data.key, data.value)
+    }
+    
+    // Refresh project configs to get updated data
+    await fetchProjectConfigs()
+    
+    // Close dialogs
+    showAddDialog.value = false
+    showConflictDialog.value = false
+    pendingConfigData.value = null
+    conflictDetectionResult.value = null
+    
+  } catch (err: unknown) {
+    console.error('Failed to add config:', err)
+    
+    // Handle specific error types
+    const error = err as { response?: { data?: { error?: string; message?: string } }; message?: string }
+    if (error.response?.data?.error === 'key_already_exists') {
+      alert('Configuration key already exists. Please refresh the page and use the edit function instead.')
+    } else if (error.response?.data?.error === 'naming_conflict') {
+      alert(`Naming conflict: ${error.response.data.message}`)
+    } else {
+      alert(`Failed to add configuration: ${error.message || 'Unknown error'}`)
+    }
+  } finally {
+    conflictDialogLoading.value = false
+  }
+}
+
+// Handle conflict dialog confirmation
+const handleConflictConfirm = async () => {
+  if (pendingConfigData.value) {
+    await proceedWithAddConfig(pendingConfigData.value, true)
+  }
+}
+
+// Handle conflict dialog cancellation
+const handleConflictCancel = () => {
+  showConflictDialog.value = false
+  showAddDialog.value = true
+  pendingConfigData.value = null
+  conflictDetectionResult.value = null
+}
+
+// Handle edit existing configuration
+const handleConflictEditExisting = () => {
+  showConflictDialog.value = false
+  pendingConfigData.value = null
+  conflictDetectionResult.value = null
+  // TODO: Focus on the existing configuration in the UI
+  // This could scroll to and highlight the conflicting configuration
 }
 
 // Handle delete configuration request
@@ -355,7 +462,7 @@ const getFilteredConfigs = (category: string) => {
     return configs
   }
   
-  const filtered: Record<string, any> = {}
+  const filtered: Record<string, ConfigItem> = {}
   Object.entries(configs).forEach(([key, configItem]) => {
     if (
       key.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
