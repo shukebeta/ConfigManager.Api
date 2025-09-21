@@ -55,9 +55,9 @@ export class ConflictDetector {
     
     for (const [groupName, group] of Object.entries(existingConfigs)) {
       for (const [settingName] of Object.entries(group)) {
-        // Reconstruct the original key structure
-        const fullKey = `${groupName}:${settingName}`;
-        keys.push(fullKey);
+        // settingName is already the full key (may contain colons)
+        // groupName is just for grouping/display purposes
+        keys.push(settingName);
       }
     }
     
@@ -129,7 +129,10 @@ export class ConflictDetector {
   /**
    * Generate user-friendly conflict description for UI display
    */
-  static formatConflictForUI(conflict: ConflictDetectionResult): {
+  static formatConflictForUI(
+    conflict: ConflictDetectionResult, 
+    originalNewKey?: string
+  ): {
     title: string
     description: string
     details: string[]
@@ -157,7 +160,7 @@ export class ConflictDetector {
           title: 'Naming Conflict Detected',
           description: 'The key you\'re trying to add conflicts with an existing parent configuration.',
           details: [
-            `New key: ${conflict.conflictingKey}:...`,
+            `New key: ${originalNewKey || conflict.message?.match(/Key '([^']+)'/)?.[1] || 'unknown'}`,
             `Existing parent: ${conflict.conflictingKey}`,
             'This may cause confusion for configuration consumers.'
           ],

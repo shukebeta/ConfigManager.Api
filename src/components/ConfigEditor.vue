@@ -197,7 +197,7 @@
     <!-- Conflict Confirmation Dialog -->
     <ConflictConfirmDialog
       :show="showConflictDialog"
-      :conflict="conflictDetectionResult ? ConflictDetector.formatConflictForUI(conflictDetectionResult) : null"
+      :conflict="conflictDetectionResult ? ConflictDetector.formatConflictForUI(conflictDetectionResult, pendingConfigData?.key) : null"
       :new-config-info="pendingConfigData ? { key: pendingConfigData.key, value: pendingConfigData.value } : null"
       :loading="conflictDialogLoading"
       @confirm="handleConflictConfirm"
