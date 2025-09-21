@@ -28,7 +28,7 @@ export class ConflictDetector {
       : newKey;
     
     // Build a flat list of all existing keys (without project prefix)
-    const existingKeys = this.extractAllKeys(existingConfigs);
+    const existingKeys = this.extractAllKeys(existingConfigs, projectName);
     
     // Check for exact duplicate
     const duplicateCheck = this.checkDuplicateKey(keyWithoutProject, existingKeys);
@@ -49,15 +49,23 @@ export class ConflictDetector {
    * Extract all configuration keys from the grouped structure
    */
   private static extractAllKeys(
-    existingConfigs: Record<string, ConfigGroup>
+    existingConfigs: Record<string, ConfigGroup>,
+    projectName?: string
   ): string[] {
     const keys: string[] = [];
     
     for (const [groupName, group] of Object.entries(existingConfigs)) {
-      for (const [settingName] of Object.entries(group)) {
-        // settingName is already the full key (may contain colons)
-        // groupName is just for grouping/display purposes
-        keys.push(settingName);
+      for (const [settingName, configItem] of Object.entries(group)) {
+        // Use the key field from ConfigItem if available, fallback to settingName
+        const fullKey = configItem.key || settingName;
+        
+        // Remove project prefix if provided for consistent comparison
+        let keyForComparison = fullKey;
+        if (projectName && fullKey.startsWith(`${projectName}:`)) {
+          keyForComparison = fullKey.substring(`${projectName}:`.length);
+        }
+        
+        keys.push(keyForComparison);
       }
     }
     

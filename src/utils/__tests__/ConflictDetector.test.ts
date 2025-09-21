@@ -5,57 +5,66 @@ import type { ConfigGroup } from '@/types/api'
 // Mock configuration data for testing
 const mockConfigsByGroup: Record<string, ConfigGroup> = {
   'database': {
-    'host': {
+    'database:host': {
+      key: 'testproject:database:host',
       value: 'localhost',
       type: 'string',
       parsedValue: 'localhost'
     },
-    'port': {
+    'database:port': {
+      key: 'testproject:database:port',
       value: '5432',
       type: 'integer', 
       parsedValue: 5432
     },
-    'timeout': {
+    'database:timeout': {
+      key: 'testproject:database:timeout',
       value: '30000',
       type: 'integer',
       parsedValue: 30000
     }
   },
   'logging': {
-    'level': {
+    'logging:level': {
+      key: 'testproject:logging:level',
       value: 'info',
       type: 'loglevel',
       parsedValue: 'info'
     },
-    'format': {
+    'logging:format': {
+      key: 'testproject:logging:format',
       value: 'json',
       type: 'string',
       parsedValue: 'json'
     }
   },
   'feature': {
-    'newui': {
+    'feature:newui': {
+      key: 'testproject:feature:newui',
       value: 'true',
       type: 'boolean',
       parsedValue: true
     }
   },
   'nested': {
-    'config': {
+    'nested:config': {
+      key: 'testproject:nested:config',
       value: 'parent-value',
       type: 'string',
       parsedValue: 'parent-value'
     }
   },
   'multi': {
-    'level': {
+    'multi:level': {
+      key: 'testproject:multi:level',
       value: 'top-level',
       type: 'string', 
       parsedValue: 'top-level'
     }
   },
   'multi:level': {
-    'deep': {
+    'multi:level:deep': {
+      key: 'testproject:multi:level:deep',
       value: 'deep-value',
       type: 'string',
       parsedValue: 'deep-value'
@@ -308,9 +317,22 @@ describe('ConflictDetector', () => {
 
     it('should handle complex project names', () => {
       const complexProject = 'my-app.service'
+      
+      // Create mock data with complex project name
+      const complexProjectMockConfigs: Record<string, ConfigGroup> = {
+        'database': {
+          'database:host': {
+            key: `${complexProject}:database:host`,
+            value: 'localhost',
+            type: 'string',
+            parsedValue: 'localhost'
+          }
+        }
+      }
+      
       const result = ConflictDetector.detectConflicts(
         `${complexProject}:database:host`,
-        mockConfigsByGroup,
+        complexProjectMockConfigs,
         complexProject
       )
 

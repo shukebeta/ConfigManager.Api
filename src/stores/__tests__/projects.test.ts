@@ -8,7 +8,7 @@ vi.mock('@/services/api', () => ({
   default: {
     getProjects: vi.fn(),
     getProjectConfigs: vi.fn(),
-    setConfig: vi.fn(),
+    updateConfig: vi.fn(),
     deleteConfig: vi.fn(),
   },
 }))
@@ -134,7 +134,7 @@ describe('Projects Store', () => {
       totalConfigs: 1
     }
     
-    mockApiClient.setConfig.mockResolvedValue({
+    mockApiClient.updateConfig.mockResolvedValue({
       success: true,
       key: 'db.host',
       value: 'newhost',
@@ -150,7 +150,7 @@ describe('Projects Store', () => {
     
     await store.updateConfig('db.host', 'newhost')
     
-    expect(mockApiClient.setConfig).toHaveBeenCalledWith('db.host', 'newhost')
+    expect(mockApiClient.updateConfig).toHaveBeenCalledWith('db.host', 'newhost')
     expect(mockApiClient.getProjectConfigs).toHaveBeenCalledWith('project1')
     expect(store.error).toBeNull()
   })
@@ -160,7 +160,7 @@ describe('Projects Store', () => {
     store.selectedProject = 'project1'
     
     const mockError = new Error('Update failed')
-    mockApiClient.setConfig.mockRejectedValue(mockError)
+    mockApiClient.updateConfig.mockRejectedValue(mockError)
     
     await expect(store.updateConfig('key', 'value')).rejects.toThrow('Update failed')
     expect(store.error).toBe('Update failed')

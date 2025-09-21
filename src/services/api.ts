@@ -4,7 +4,8 @@ import type {
   ProjectConfigsResponse,
   ConfigItemResponse,
   SetConfigResponse,
-  DeleteConfigResponse
+  DeleteConfigResponse,
+  DeleteNamespaceResponse
 } from '@/types/api'
 
 class ApiClient {
@@ -78,6 +79,13 @@ class ApiClient {
   async deleteConfig(key: string): Promise<DeleteConfigResponse> {
     const response: AxiosResponse<DeleteConfigResponse> = await this.client.delete(
       `/redis/${encodeURIComponent(key)}`
+    )
+    return response.data
+  }
+
+  async deleteNamespace(namespaceKey: string): Promise<DeleteNamespaceResponse> {
+    const response: AxiosResponse<DeleteNamespaceResponse> = await this.client.delete(
+      `/redis/${encodeURIComponent(namespaceKey)}/children`
     )
     return response.data
   }

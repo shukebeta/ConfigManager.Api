@@ -53,6 +53,17 @@ export interface DeleteConfigResponse {
   }
 }
 
+export interface DeleteNamespaceResponse {
+  success: boolean
+  namespaceKey: string
+  operations: {
+    deleted: number
+    published: number
+    childKeys: string[]
+    preservedParent: boolean
+  }
+}
+
 export interface ApiError {
   error: string
   message: string

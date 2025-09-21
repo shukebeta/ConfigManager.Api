@@ -29,6 +29,8 @@ export const useProjectsStore = defineStore('projects', () => {
       // Auto-select first project if none selected
       if (response.projects.length > 0 && !selectedProject.value) {
         selectedProject.value = response.projects[0]
+        // Fetch configs for the auto-selected project
+        await fetchProjectConfigs()
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch projects'
@@ -68,7 +70,7 @@ export const useProjectsStore = defineStore('projects', () => {
     error.value = null
     
     try {
-      await apiClient.setConfig(key, value)
+      await apiClient.updateConfig(key, value)
       // Refresh project configs to get updated data
       await fetchProjectConfigs()
     } catch (err) {
@@ -97,6 +99,24 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }
 
+  async function deleteNamespace(namespaceKey: string) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const result = await apiClient.deleteNamespace(namespaceKey)
+      // Refresh project configs to get updated data
+      await fetchProjectConfigs()
+      return result
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete namespace'
+      console.error('Error deleting namespace:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function clearError() {
     error.value = null
   }
@@ -119,6 +139,7 @@ export const useProjectsStore = defineStore('projects', () => {
     fetchProjectConfigs,
     updateConfig,
     deleteConfig,
+    deleteNamespace,
     clearError
   }
 })
