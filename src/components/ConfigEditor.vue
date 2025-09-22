@@ -61,7 +61,7 @@
       <div v-for="category in filteredCategories" :key="category" class="category-section">
         <h3 class="category-header">{{ category }}</h3>
         <div class="configs-compact-list">
-          <template v-for="item in organizedConfigs[category]" :key="item.fullKey">
+          <template v-for="item in namespaceStructure[category]" :key="item.type === 'namespace' ? item.namespaceKey : item.configKey">
             
             <!-- Namespace Entry -->
             <div v-if="item.type === 'namespace'" class="namespace-wrapper">
@@ -69,7 +69,7 @@
                 <div class="config-compact-content" @click="toggleNamespace(item.namespaceKey)">
                   <span class="config-compact-key">{{ item.namespaceKey }}:...</span>
                   <span class="config-compact-type">namespace</span>
-                  <span class="config-compact-value">({{ item.children.length }} items)</span>
+                  <span class="config-compact-value">({{ item.childConfigKeys.length }} items)</span>
                   <button 
                     class="expand-btn" 
                     :class="{ expanded: item.isExpanded }"
@@ -90,40 +90,40 @@
               <!-- Expanded Children -->
               <div v-if="item.isExpanded" class="namespace-children">
                 <div 
-                  v-for="child in item.children" 
-                  :key="child.fullKey"
+                  v-for="childKey in item.childConfigKeys" 
+                  :key="getConfigData(category, childKey).key"
                   class="config-compact-item child-item"
                 >
                   <div class="config-compact-content">
-                    <span class="config-compact-key">{{ child.config.key }}</span>
-                    <span class="config-compact-type">{{ child.config.type }}</span>
+                    <span class="config-compact-key">{{ getConfigData(category, childKey).key }}</span>
+                    <span class="config-compact-type">{{ getConfigData(category, childKey).type }}</span>
                     <input
-                      v-if="child.config.type === 'boolean'"
+                      v-if="getConfigData(category, childKey).type === 'boolean'"
                       type="checkbox"
-                      :checked="child.config.parsedValue"
-                      @change="updateBooleanConfig(child.key, $event)"
+                      :checked="Boolean(getConfigData(category, childKey).parsedValue)"
+                      @change="updateBooleanConfig(getConfigData(category, childKey).key, $event)"
                       class="config-compact-input checkbox"
                     />
                     <input
-                      v-else-if="child.config.type === 'integer' || child.config.type === 'float'"
+                      v-else-if="getConfigData(category, childKey).type === 'integer' || getConfigData(category, childKey).type === 'float'"
                       type="number"
-                      :step="child.config.type === 'float' ? '0.01' : '1'"
-                      v-model="editableConfigs[child.key]"
+                      :step="getConfigData(category, childKey).type === 'float' ? '0.01' : '1'"
+                      v-model="editableConfigs[getConfigData(category, childKey).key]"
                       @blur="handleConfigChange"
                       @keyup.enter="handleConfigChange"
                       :class="[
                         'config-compact-input',
-                        { 'modified': isModified(child.key, child.config.value) }
+                        { 'modified': isModified(getConfigData(category, childKey).key, getConfigData(category, childKey).value) }
                       ]"
-                      :placeholder="child.config.value || 'Enter value...'"
+                      :placeholder="getConfigData(category, childKey).value || 'Enter value...'"
                     />
                     <select
-                      v-else-if="child.config.type === 'loglevel'"
-                      v-model="editableConfigs[child.key]"
+                      v-else-if="getConfigData(category, childKey).type === 'loglevel'"
+                      v-model="editableConfigs[getConfigData(category, childKey).key]"
                       @change="handleConfigChange"
                       :class="[
                         'config-compact-input',
-                        { 'modified': isModified(child.key, child.config.value) }
+                        { 'modified': isModified(getConfigData(category, childKey).key, getConfigData(category, childKey).value) }
                       ]"
                     >
                       <option value="trace">Trace</option>
@@ -134,47 +134,47 @@
                       <option value="fatal">Fatal</option>
                     </select>
                     <textarea
-                      v-else-if="child.config.type === 'object' || child.config.type === 'array'"
-                      v-model="editableConfigs[child.key]"
+                      v-else-if="getConfigData(category, childKey).type === 'object' || getConfigData(category, childKey).type === 'array'"
+                      v-model="editableConfigs[getConfigData(category, childKey).key]"
                       @blur="handleConfigChange"
                       :class="[
                         'config-compact-textarea',
-                        { 'modified': isModified(child.key, child.config.value) }
+                        { 'modified': isModified(getConfigData(category, childKey).key, getConfigData(category, childKey).value) }
                       ]"
-                      :placeholder="child.config.value || 'Enter JSON...'"
+                      :placeholder="getConfigData(category, childKey).value || 'Enter JSON...'"
                       rows="2"
                     ></textarea>
                     <input
                       v-else
                       type="text"
-                      v-model="editableConfigs[child.key]"
+                      v-model="editableConfigs[getConfigData(category, childKey).key]"
                       @blur="handleConfigChange"
                       @keyup.enter="handleConfigChange"
                       :class="[
                         'config-compact-input',
-                        { 'modified': isModified(child.key, child.config.value) }
+                        { 'modified': isModified(getConfigData(category, childKey).key, getConfigData(category, childKey).value) }
                       ]"
-                      :placeholder="child.config.value || 'Enter value...'"
+                      :placeholder="getConfigData(category, childKey).value || 'Enter value...'"
                     />
                   </div>
                   <div class="config-compact-actions">
                     <button
-                      v-if="isModified(child.key, child.config.value)"
-                      @click="saveConfig(child.key)"
+                      v-if="isModified(getConfigData(category, childKey).key, getConfigData(category, childKey).value)"
+                      @click="saveConfig(getConfigData(category, childKey).key)"
                       :disabled="loading"
                       class="save-btn-compact"
                     >
                       Save
                     </button>
                     <button
-                      v-if="isModified(child.key, child.config.value)"
-                      @click="resetConfig(child.key, child.config.value)"
+                      v-if="isModified(getConfigData(category, childKey).key, getConfigData(category, childKey).value)"
+                      @click="resetConfig(getConfigData(category, childKey).key, getConfigData(category, childKey).value)"
                       class="reset-btn-compact"
                     >
                       Reset
                     </button>
                     <button
-                      @click="handleDeleteConfig(child.config.key)"
+                      @click="handleDeleteConfig(getConfigData(category, childKey).key)"
                       class="delete-btn-compact"
                       title="Delete this configuration"
                     >
@@ -188,35 +188,35 @@
             <!-- Standalone Entry -->
             <div v-else class="config-compact-item standalone-item">
               <div class="config-compact-content">
-                <span class="config-compact-key">{{ item.config.key }}</span>
-                <span class="config-compact-type">{{ item.config.type }}</span>
+                <span class="config-compact-key">{{ getConfigData(category, item.configKey).key }}</span>
+                <span class="config-compact-type">{{ getConfigData(category, item.configKey).type }}</span>
                 <input
-                  v-if="item.config.type === 'boolean'"
+                  v-if="getConfigData(category, item.configKey).type === 'boolean'"
                   type="checkbox"
-                  :checked="item.config.parsedValue"
-                  @change="updateBooleanConfig(item.key, $event)"
+                  :checked="Boolean(getConfigData(category, item.configKey).parsedValue)"
+                  @change="updateBooleanConfig(getConfigData(category, item.configKey).key, $event)"
                   class="config-compact-input checkbox"
                 />
                 <input
-                  v-else-if="item.config.type === 'integer' || item.config.type === 'float'"
+                  v-else-if="getConfigData(category, item.configKey).type === 'integer' || getConfigData(category, item.configKey).type === 'float'"
                   type="number"
-                  :step="item.config.type === 'float' ? '0.01' : '1'"
-                  v-model="editableConfigs[item.key]"
+                  :step="getConfigData(category, item.configKey).type === 'float' ? '0.01' : '1'"
+                  v-model="editableConfigs[getConfigData(category, item.configKey).key]"
                   @blur="handleConfigChange"
                   @keyup.enter="handleConfigChange"
                   :class="[
                     'config-compact-input',
-                    { 'modified': isModified(item.key, item.config.value) }
+                    { 'modified': isModified(getConfigData(category, item.configKey).key, getConfigData(category, item.configKey).value) }
                   ]"
-                  :placeholder="item.config.value || 'Enter value...'"
+                  :placeholder="getConfigData(category, item.configKey).value || 'Enter value...'"
                 />
                 <select
-                  v-else-if="item.config.type === 'loglevel'"
-                  v-model="editableConfigs[item.key]"
+                  v-else-if="getConfigData(category, item.configKey).type === 'loglevel'"
+                  v-model="editableConfigs[getConfigData(category, item.configKey).key]"
                   @change="handleConfigChange"
                   :class="[
                     'config-compact-input',
-                    { 'modified': isModified(item.key, item.config.value) }
+                    { 'modified': isModified(getConfigData(category, item.configKey).key, getConfigData(category, item.configKey).value) }
                   ]"
                 >
                   <option value="trace">Trace</option>
@@ -227,47 +227,47 @@
                   <option value="fatal">Fatal</option>
                 </select>
                 <textarea
-                  v-else-if="item.config.type === 'object' || item.config.type === 'array'"
-                  v-model="editableConfigs[item.key]"
+                  v-else-if="getConfigData(category, item.configKey).type === 'object' || getConfigData(category, item.configKey).type === 'array'"
+                  v-model="editableConfigs[getConfigData(category, item.configKey).key]"
                   @blur="handleConfigChange"
                   :class="[
                     'config-compact-textarea',
-                    { 'modified': isModified(item.key, item.config.value) }
+                    { 'modified': isModified(getConfigData(category, item.configKey).key, getConfigData(category, item.configKey).value) }
                   ]"
-                  :placeholder="item.config.value || 'Enter JSON...'"
+                  :placeholder="getConfigData(category, item.configKey).value || 'Enter JSON...'"
                   rows="2"
                 ></textarea>
                 <input
                   v-else
                   type="text"
-                  v-model="editableConfigs[item.key]"
+                  v-model="editableConfigs[getConfigData(category, item.configKey).key]"
                   @blur="handleConfigChange"
                   @keyup.enter="handleConfigChange"
                   :class="[
                     'config-compact-input',
-                    { 'modified': isModified(item.key, item.config.value) }
+                    { 'modified': isModified(getConfigData(category, item.configKey).key, getConfigData(category, item.configKey).value) }
                   ]"
-                  :placeholder="item.config.value || 'Enter value...'"
+                  :placeholder="getConfigData(category, item.configKey).value || 'Enter value...'"
                 />
               </div>
               <div class="config-compact-actions">
                 <button
-                  v-if="isModified(item.key, item.config.value)"
-                  @click="saveConfig(item.key)"
+                  v-if="isModified(getConfigData(category, item.configKey).key, getConfigData(category, item.configKey).value)"
+                  @click="saveConfig(getConfigData(category, item.configKey).key)"
                   :disabled="loading"
                   class="save-btn-compact"
                 >
                   Save
                 </button>
                 <button
-                  v-if="isModified(item.key, item.config.value)"
-                  @click="resetConfig(item.key, item.config.value)"
+                  v-if="isModified(getConfigData(category, item.configKey).key, getConfigData(category, item.configKey).value)"
+                  @click="resetConfig(getConfigData(category, item.configKey).key, getConfigData(category, item.configKey).value)"
                   class="reset-btn-compact"
                 >
                   Reset
                 </button>
                 <button
-                  @click="handleDeleteConfig(item.config.key)"
+                  @click="handleDeleteConfig(getConfigData(category, item.configKey).key)"
                   class="delete-btn-compact"
                   title="Delete this configuration"
                 >
@@ -301,6 +301,20 @@
       @confirm="confirmDeleteConfig"
       @cancel="cancelDeleteConfig"
       ref="deleteDialog"
+    />
+
+    <!-- Delete Namespace Confirmation Dialog -->
+    <ConfirmDialog
+      :show="showDeleteNamespaceDialog"
+      title="Delete Namespace"
+      :message="`Are you sure you want to delete all child configurations in namespace '${namespaceToDelete}'?\n\nThis action cannot be undone.`"
+      confirm-text="Delete All"
+      loading-text="Deleting..."
+      :is-danger="true"
+      :config-key="namespaceToDelete"
+      @confirm="confirmDeleteNamespace"
+      @cancel="cancelDeleteNamespace"
+      ref="deleteNamespaceDialog"
     />
 
     <!-- Conflict Confirmation Dialog -->
@@ -349,9 +363,12 @@ const selectedCategory = ref('')
 // Dialog state
 const showAddDialog = ref(false)
 const showDeleteDialog = ref(false)
+const showDeleteNamespaceDialog = ref(false)
 const showConflictDialog = ref(false)
 const configToDelete = ref('')
+const namespaceToDelete = ref('')
 const deleteDialog = ref()
+const deleteNamespaceDialog = ref()
 
 // Conflict detection state
 const pendingConfigData = ref<{ key: string; value: string } | null>(null)
@@ -389,8 +406,8 @@ const filteredConfigsCount = computed(() => {
   }, 0)
 })
 
-// Reorganized config structure for display
-const organizedConfigs = computed(() => {
+// Namespace structure organization (no data mapping)
+const namespaceStructure = computed(() => {
   if (!selectedProject.value) return {}
   
   const result: Record<string, any[]> = {}
@@ -454,37 +471,26 @@ const organizedConfigs = computed(() => {
       const parentConfigKey = sortedKeys.find(k => configs[k].key === namespaceKey)
       const hasParentValue = !!parentConfigKey
       
-      const namespaceChildren = children.map(childActualKey => {
-        const childConfigKey = sortedKeys.find(k => configs[k].key === childActualKey)!
-        return {
-          key: childConfigKey,
-          config: configs[childConfigKey]
-        }
-      })
+      const childConfigKeys = children.map(childActualKey => {
+        return sortedKeys.find(k => configs[k].key === childActualKey)!
+      }).filter(Boolean)
       
       // If parent has a value, include it as the first child
-      if (hasParentValue && parentConfigKey) {
-        namespaceChildren.unshift({
-          key: parentConfigKey,
-          config: configs[parentConfigKey]
-        })
-      }
+      const allChildKeys = hasParentValue && parentConfigKey 
+        ? [parentConfigKey, ...childConfigKeys]
+        : childConfigKeys
       
       items.push({
         type: 'namespace',
-        key: parentConfigKey || namespaceChildren[0]?.key, // Use first child if no parent
         namespaceKey: namespaceKey,
-        children: namespaceChildren,
+        childConfigKeys: allChildKeys, // Just store the config keys, no data mapping
         hasParentValue: hasParentValue,
         isExpanded: expandedNamespaces.value.has(namespaceKey)
       })
       
       // Mark all related keys as processed
       if (parentConfigKey) processed.add(parentConfigKey)
-      children.forEach(childActualKey => {
-        const childConfigKey = sortedKeys.find(k => configs[k].key === childActualKey)
-        if (childConfigKey) processed.add(childConfigKey)
-      })
+      childConfigKeys.forEach(childKey => processed.add(childKey))
       
       processedNamespaces.add(namespaceKey)
     }
@@ -496,8 +502,7 @@ const organizedConfigs = computed(() => {
       // This is a standalone key
       items.push({
         type: 'standalone',
-        key: key,
-        config: configs[key]
+        configKey: key // Just store the config key, no data mapping
       })
       processed.add(key)
     })
@@ -508,6 +513,12 @@ const organizedConfigs = computed(() => {
   return result
 })
 
+// Helper function to get config data by key (no mapping, direct access)
+const getConfigData = (category: string, configKey: string) => {
+  const configs = getFilteredConfigs(category)
+  return configs[configKey]
+}
+
 // Initialize editable configs when project configs change
 watch(
   projectConfigs,
@@ -515,8 +526,9 @@ watch(
     if (newConfigs?.configs) {
       const flattened: Record<string, string> = {}
       Object.entries(newConfigs.configs).forEach(([, configs]) => {
-        Object.entries(configs).forEach(([key, configItem]) => {
-          flattened[key] = configItem.value
+        Object.entries(configs).forEach(([, configItem]) => {
+          // Use the complete key from configItem.key instead of the partial key
+          flattened[configItem.key] = configItem.value
         })
       })
       editableConfigs.value = { ...flattened }
@@ -673,17 +685,32 @@ const handleDeleteConfig = (key: string) => {
 }
 
 // Handle delete namespace request
-const handleDeleteNamespace = async (namespaceKey: string) => {
-  if (!confirm(`Are you sure you want to delete all child configurations in namespace "${namespaceKey}"?\n\nThis action cannot be undone.`)) {
-    return
-  }
-  
+const handleDeleteNamespace = (namespaceKey: string) => {
+  namespaceToDelete.value = namespaceKey
+  showDeleteNamespaceDialog.value = true
+}
+
+// Confirm delete namespace
+const confirmDeleteNamespace = async () => {
+  const namespace = namespaceToDelete.value
   try {
-    const result = await deleteNamespace(namespaceKey)
-    alert(`Successfully deleted ${result.operations.deleted} child configurations from namespace "${namespaceKey}".${result.operations.preservedParent ? '\nParent configuration was preserved.' : ''}`)
+    const result = await deleteNamespace(namespace)
+    showDeleteNamespaceDialog.value = false
+    namespaceToDelete.value = ''
+    deleteNamespaceDialog.value?.resetLoading()
+    
+    alert(`Successfully deleted ${result.operations.deleted} child configurations from namespace "${namespace}".${result.operations.preservedParent ? '\nParent configuration was preserved.' : ''}`)
   } catch (err) {
     alert(`Failed to delete namespace: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    deleteNamespaceDialog.value?.resetLoading()
   }
+}
+
+// Cancel delete namespace
+const cancelDeleteNamespace = () => {
+  showDeleteNamespaceDialog.value = false
+  namespaceToDelete.value = ''
+  deleteNamespaceDialog.value?.resetLoading()
 }
 
 // Confirm delete configuration

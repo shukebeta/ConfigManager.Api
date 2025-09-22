@@ -83,11 +83,11 @@ describe('Projects Store', () => {
       project: 'project2',
       configs: {
         database: { 
-          'db.host': { key: 'project2:database:db.host', value: 'localhost', type: 'string', parsedValue: 'localhost' },
-          'db.port': { key: 'project2:database:db.port', value: '5432', type: 'integer', parsedValue: 5432 }
+          'db.host': { key: 'project2:database:db.host', value: 'localhost', type: 'string' as const, parsedValue: 'localhost' },
+          'db.port': { key: 'project2:database:db.port', value: '5432', type: 'integer' as const, parsedValue: 5432 }
         },
         cache: { 
-          'cache.ttl': { key: 'project2:cache:cache.ttl', value: '3600', type: 'integer', parsedValue: 3600 }
+          'cache.ttl': { key: 'project2:cache:cache.ttl', value: '3600', type: 'integer' as const, parsedValue: 3600 }
         }
       },
       groups: ['database', 'cache'],
@@ -144,7 +144,7 @@ describe('Projects Store', () => {
     mockApiClient.getProjectConfigs.mockResolvedValue({
       ...mockConfigsResponse,
       configs: {
-        database: { 'db.host': 'newhost' }
+        database: { 'db.host': { key: 'project1:database:db.host', value: 'newhost', type: 'string' as const, parsedValue: 'newhost' } }
       }
     })
     

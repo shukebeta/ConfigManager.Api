@@ -38,11 +38,6 @@
           <div v-if="errors.value" class="error-message">{{ errors.value }}</div>
         </div>
 
-        <div class="project-info">
-          <strong>Project:</strong> 
-          <span v-if="selectedProject">{{ selectedProject }}</span>
-          <span v-else class="no-project">None selected - specify project in the key</span>
-        </div>
       </form>
       
       <div class="dialog-actions">
@@ -56,7 +51,7 @@
           :disabled="loading || !isFormValid"
         >
           <span v-if="loading">Adding...</span>
-          <span v-else>Add Configuration</span>
+          <span v-else>Submit</span>
         </button>
       </div>
     </div>
@@ -280,19 +275,6 @@ defineExpose({
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
-.project-info {
-  background: var(--color-background-soft);
-  padding: 0.75rem;
-  border-radius: 4px;
-  border: 1px solid var(--color-border);
-  margin-top: 1rem;
-  color: var(--color-text-2);
-}
-
-.no-project {
-  color: #f59e0b;
-  font-style: italic;
-}
 
 .dialog-actions {
   padding: 0 1.5rem 1.5rem 1.5rem;

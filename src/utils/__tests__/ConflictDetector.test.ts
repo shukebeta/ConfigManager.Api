@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ConflictDetector } from '../ConflictDetector'
+import { ConflictDetector, type ConflictDetectionResult } from '../ConflictDetector'
 import type { ConfigGroup } from '@/types/api'
 
 // Mock configuration data for testing
