@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import apiClient from '@/services/api'
 import type { ProjectsResponse, ProjectConfigsResponse } from '@/types/api'
+import { createConfigItem } from '@/utils/ConfigTypeInference'
 
 export const useProjectsStore = defineStore('projects', () => {
   // State
@@ -155,12 +156,10 @@ export const useProjectsStore = defineStore('projects', () => {
       if (response.success && projectConfigs.value && selectedProject.value) {
         const { groupName, settingName } = parseConfigKey(key, selectedProject.value)
         
-        // Create new config item based on value type
+        // Create new config item with inferred type and parsed value
         const newConfigItem = {
           key,
-          value,
-          type: 'string' as const, // We can enhance type detection later
-          parsedValue: value
+          ...createConfigItem(key, value)
         }
         
         // Clone current state for immutable update
@@ -307,6 +306,66 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }
 
+  // Incremental namespace deletion after successful API call
+  async function deleteNamespaceIncremental(namespaceKey: string) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Call API first
+      const result = await apiClient.deleteNamespace(namespaceKey)
+      
+      // Only update UI after successful API call
+      if (result.success && projectConfigs.value && selectedProject.value) {
+        // Clone current state
+        const newConfigs = { ...projectConfigs.value.configs }
+        const affectedGroups = new Set<string>()
+        let deletedCount = 0
+        
+        // Process each deleted child key
+        result.operations.childKeys.forEach(childKey => {
+          const { groupName, settingName } = parseConfigKey(childKey, selectedProject.value)
+          affectedGroups.add(groupName)
+          
+          const currentGroup = newConfigs[groupName]
+          if (currentGroup && currentGroup[settingName]) {
+            const updatedGroup = { ...currentGroup }
+            delete updatedGroup[settingName]
+            deletedCount++
+            
+            // Update or remove the group
+            if (Object.keys(updatedGroup).length === 0) {
+              delete newConfigs[groupName]
+            } else {
+              newConfigs[groupName] = updatedGroup
+            }
+          }
+        })
+        
+        // Update groups array to remove any empty groups
+        const newGroups = projectConfigs.value.groups.filter(groupName => 
+          newConfigs[groupName] && Object.keys(newConfigs[groupName]).length > 0
+        )
+        
+        // Update state
+        projectConfigs.value = {
+          ...projectConfigs.value,
+          configs: newConfigs,
+          groups: newGroups,
+          totalConfigs: projectConfigs.value.totalConfigs - deletedCount
+        }
+      }
+      
+      return result
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete namespace'
+      console.error('Error deleting namespace:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     projects,
@@ -330,6 +389,7 @@ export const useProjectsStore = defineStore('projects', () => {
     // Incremental actions
     addConfigIncremental,
     updateConfigIncremental,
-    deleteConfigIncremental
+    deleteConfigIncremental,
+    deleteNamespaceIncremental
   }
 })

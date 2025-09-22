@@ -1,86 +1,15 @@
 import { describe, it, expect } from 'vitest'
-
-interface ConfigItem {
-  value: string
-  type: string
-  parsedValue?: any
-}
-
-interface ConfigGroup {
-  [key: string]: ConfigItem
-}
-
-// Extract the organization logic for testing
-function organizeConfigs(
-  configsByGroup: Record<string, ConfigGroup>, 
-  selectedProject: string,
-  expandedNamespaces: Set<string> = new Set()
-): Record<string, any[]> {
-  const result: Record<string, any[]> = {}
-  
-  Object.entries(configsByGroup).forEach(([category, configs]) => {
-    const configKeys = Object.keys(configs)
-    const items: any[] = []
-    
-    // Group keys by namespaces and identify standalone keys
-    const processed = new Set<string>()
-    
-    // Sort keys to ensure parents come before children
-    const sortedKeys = configKeys.sort()
-    
-    sortedKeys.forEach(key => {
-      if (processed.has(key)) return
-      
-      const fullKey = `${selectedProject}:${key}`
-      
-      // Check if this key has children (is a namespace)
-      const children = sortedKeys.filter(otherKey => 
-        otherKey !== key && otherKey.startsWith(`${key}:`)
-      )
-      
-      if (children.length > 0) {
-        // This is a namespace with children
-        items.push({
-          type: 'namespace',
-          key: key,
-          fullKey: fullKey,
-          children: children.map(childKey => ({
-            key: childKey,
-            fullKey: `${selectedProject}:${childKey}`,
-            config: configs[childKey]
-          })),
-          isExpanded: expandedNamespaces.has(fullKey)
-        })
-        
-        // Mark all children as processed
-        children.forEach(child => processed.add(child))
-      } else {
-        // This is a standalone key
-        items.push({
-          type: 'standalone',
-          key: key,
-          fullKey: fullKey,
-          config: configs[key]
-        })
-      }
-      
-      processed.add(key)
-    })
-    
-    result[category] = items
-  })
-  
-  return result
-}
+import { organizeConfigs } from '@/utils/ConfigOrganizer'
+import type { ConfigGroup } from '@/utils/ConfigOrganizer'
 
 describe('Config Organization Logic', () => {
   const mockProject = 'test'
   
   it('should correctly organize simple standalone configs', () => {
-    const configsByGroup = {
+    const configsByGroup: Record<string, ConfigGroup> = {
       'mygroup': {
-        'simplekey': { value: 'value1', type: 'string' },
-        'anotherkey': { value: 'value2', type: 'string' }
+        'simplekey': { key: 'test:mygroup:simplekey', value: 'value1', type: 'string', parsedValue: 'value1' },
+        'anotherkey': { key: 'test:mygroup:anotherkey', value: 'value2', type: 'string', parsedValue: 'value2' }
       }
     }
     

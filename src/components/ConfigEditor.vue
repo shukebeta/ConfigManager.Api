@@ -360,7 +360,8 @@ const {
   // Incremental functions
   addConfigIncremental,
   updateConfigIncremental,
-  deleteConfigIncremental
+  deleteConfigIncremental,
+  deleteNamespaceIncremental
 } = projectsStore
 
 // Local state for editable configs
@@ -696,7 +697,7 @@ const handleDeleteNamespace = (namespaceKey: string) => {
 const confirmDeleteNamespace = async () => {
   const namespace = namespaceToDelete.value
   try {
-    const result = await deleteNamespace(namespace)
+    const result = await deleteNamespaceIncremental(namespace)
     showDeleteNamespaceDialog.value = false
     namespaceToDelete.value = ''
     deleteNamespaceDialog.value?.resetLoading()
