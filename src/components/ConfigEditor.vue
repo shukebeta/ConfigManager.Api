@@ -325,7 +325,7 @@
       :loading="conflictDialogLoading"
       @confirm="handleConflictConfirm"
       @cancel="handleConflictCancel"
-      @edit-existing="handleConflictEditExisting"
+      @close="handleConflictClose"
     />
   </div>
 </template>
@@ -351,7 +351,17 @@ const {
   groups,
   configsByGroup
 } = storeToRefs(projectsStore)
-const { fetchProjectConfigs, updateConfig, deleteConfig, deleteNamespace, clearError } = projectsStore
+const { 
+  fetchProjectConfigs, 
+  updateConfig, 
+  deleteConfig, 
+  deleteNamespace, 
+  clearError,
+  // Incremental functions
+  addConfigIncremental,
+  updateConfigIncremental,
+  deleteConfigIncremental
+} = projectsStore
 
 // Local state for editable configs
 const editableConfigs = ref<Record<string, string>>({})
@@ -473,7 +483,11 @@ const namespaceStructure = computed(() => {
       
       const childConfigKeys = children.map(childActualKey => {
         return sortedKeys.find(k => configs[k].key === childActualKey)!
-      }).filter(Boolean)
+      }).filter(Boolean).sort((a, b) => {
+        const configA = configs[a]
+        const configB = configs[b]
+        return configA.key.localeCompare(configB.key)
+      })
       
       // If parent has a value, include it as the first child
       const allChildKeys = hasParentValue && parentConfigKey 
@@ -562,8 +576,8 @@ const handleConfigChange = async () => {
 const saveConfig = async (key: string) => {
   try {
     const value = editableConfigs.value[key]
-    await updateConfig(key, value)
-    // The store will refresh configs after successful update
+    await updateConfigIncremental(key, value)
+    // The store will update UI incrementally after successful API call
   } catch (err) {
     console.error('Failed to save config:', err)
     // Error is handled by the store
@@ -617,19 +631,8 @@ const proceedWithAddConfig = async (data: { key: string; value: string }, forceA
   try {
     conflictDialogLoading.value = true
     
-    // Use different API endpoints based on operation
-    const apiClient = (await import('@/services/api')).default
-    
-    if (forceAdd) {
-      // Use POST with forceAdd=true to bypass conflict detection
-      await apiClient.setConfig(data.key, data.value, { forceAdd: true })
-    } else {
-      // Use PUT for normal create/update
-      await apiClient.updateConfig(data.key, data.value)
-    }
-    
-    // Refresh project configs to get updated data
-    await fetchProjectConfigs()
+    // Use incremental add config function
+    await addConfigIncremental(data.key, data.value, forceAdd)
     
     // Close dialogs
     showAddDialog.value = false
@@ -661,21 +664,20 @@ const handleConflictConfirm = async () => {
   }
 }
 
-// Handle conflict dialog cancellation
+// Handle conflict dialog cancellation (for warning-level conflicts)
 const handleConflictCancel = () => {
   showConflictDialog.value = false
-  showAddDialog.value = true
+  showAddDialog.value = true  // Return to Add Dialog for warnings
   pendingConfigData.value = null
   conflictDetectionResult.value = null
 }
 
-// Handle edit existing configuration
-const handleConflictEditExisting = () => {
+// Handle conflict dialog close (for error-level conflicts)
+const handleConflictClose = () => {
   showConflictDialog.value = false
+  // Don't reopen Add Dialog for errors - just close everything
   pendingConfigData.value = null
   conflictDetectionResult.value = null
-  // TODO: Focus on the existing configuration in the UI
-  // This could scroll to and highlight the conflicting configuration
 }
 
 // Handle delete configuration request
@@ -698,8 +700,6 @@ const confirmDeleteNamespace = async () => {
     showDeleteNamespaceDialog.value = false
     namespaceToDelete.value = ''
     deleteNamespaceDialog.value?.resetLoading()
-    
-    alert(`Successfully deleted ${result.operations.deleted} child configurations from namespace "${namespace}".${result.operations.preservedParent ? '\nParent configuration was preserved.' : ''}`)
   } catch (err) {
     alert(`Failed to delete namespace: ${err instanceof Error ? err.message : 'Unknown error'}`)
     deleteNamespaceDialog.value?.resetLoading()
@@ -716,7 +716,7 @@ const cancelDeleteNamespace = () => {
 // Confirm delete configuration
 const confirmDeleteConfig = async () => {
   try {
-    await deleteConfig(configToDelete.value)
+    await deleteConfigIncremental(configToDelete.value)
     showDeleteDialog.value = false
     configToDelete.value = ''
     deleteDialog.value?.resetLoading()

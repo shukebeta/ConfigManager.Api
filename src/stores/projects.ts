@@ -121,6 +121,192 @@ export const useProjectsStore = defineStore('projects', () => {
     error.value = null
   }
 
+  // Utility function to parse config key into components
+  function parseConfigKey(key: string, projectName: string) {
+    // Remove project prefix if present
+    const keyWithoutProject = key.startsWith(`${projectName}:`) 
+      ? key.substring(`${projectName}:`.length)
+      : key
+
+    // Split into parts and extract group (first part after project)
+    const parts = keyWithoutProject.split(':')
+    const groupName = parts[0]
+    const settingName = parts.slice(1).join(':') || parts[0] // Handle single-part keys
+    
+    return {
+      groupName,
+      settingName,
+      keyWithoutProject
+    }
+  }
+
+  // Incremental config addition after successful API call
+  async function addConfigIncremental(key: string, value: string, forceAdd = false) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Call API first
+      const response = forceAdd 
+        ? await apiClient.setConfig(key, value, { forceAdd: true })
+        : await apiClient.updateConfig(key, value)
+      
+      // Only update UI after successful API call
+      if (response.success && projectConfigs.value && selectedProject.value) {
+        const { groupName, settingName } = parseConfigKey(key, selectedProject.value)
+        
+        // Create new config item based on value type
+        const newConfigItem = {
+          key,
+          value,
+          type: 'string' as const, // We can enhance type detection later
+          parsedValue: value
+        }
+        
+        // Clone current state for immutable update
+        const newConfigs = { ...projectConfigs.value.configs }
+        
+        // Add/update group
+        if (!newConfigs[groupName]) {
+          newConfigs[groupName] = {}
+        }
+        newConfigs[groupName] = { ...newConfigs[groupName], [settingName]: newConfigItem }
+        
+        // Update groups array with sorted insertion
+        const newGroups = projectConfigs.value.groups.includes(groupName)
+          ? projectConfigs.value.groups
+          : [...projectConfigs.value.groups, groupName].sort((a, b) => a.localeCompare(b))
+        
+        // Update state
+        projectConfigs.value = {
+          ...projectConfigs.value,
+          configs: newConfigs,
+          groups: newGroups,
+          totalConfigs: projectConfigs.value.totalConfigs + 1
+        }
+      }
+      
+      return response
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to add config'
+      console.error('Error adding config:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Incremental config update after successful API call
+  async function updateConfigIncremental(key: string, value: string) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Call API first
+      const response = await apiClient.updateConfig(key, value)
+      
+      // Only update UI after successful API call
+      if (response.success && projectConfigs.value && selectedProject.value) {
+        const { groupName, settingName } = parseConfigKey(key, selectedProject.value)
+        
+        // Find and update existing config item
+        const currentGroup = projectConfigs.value.configs[groupName]
+        if (currentGroup && currentGroup[settingName]) {
+          const currentItem = currentGroup[settingName]
+          
+          // Clone and update the specific config item
+          const updatedItem = {
+            ...currentItem,
+            value,
+            parsedValue: value // Keep same type, just update value
+          }
+          
+          // Clone state for immutable update
+          const newConfigs = {
+            ...projectConfigs.value.configs,
+            [groupName]: {
+              ...currentGroup,
+              [settingName]: updatedItem
+            }
+          }
+          
+          // Update state (no need to change groups or totalConfigs)
+          projectConfigs.value = {
+            ...projectConfigs.value,
+            configs: newConfigs
+          }
+        }
+      }
+      
+      return response
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to update config'
+      console.error('Error updating config:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Incremental config deletion after successful API call
+  async function deleteConfigIncremental(key: string) {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Call API first
+      const response = await apiClient.deleteConfig(key)
+      
+      // Only update UI after successful API call
+      if (response.success && projectConfigs.value && selectedProject.value) {
+        const { groupName, settingName } = parseConfigKey(key, selectedProject.value)
+        
+        // Clone current state
+        const newConfigs = { ...projectConfigs.value.configs }
+        const currentGroup = newConfigs[groupName]
+        
+        if (currentGroup && currentGroup[settingName]) {
+          // Remove the specific config item
+          const updatedGroup = { ...currentGroup }
+          delete updatedGroup[settingName]
+          
+          // Check if group becomes empty
+          if (Object.keys(updatedGroup).length === 0) {
+            // Remove empty group
+            delete newConfigs[groupName]
+            
+            // Update groups array to remove empty group
+            const newGroups = projectConfigs.value.groups.filter(g => g !== groupName)
+            
+            projectConfigs.value = {
+              ...projectConfigs.value,
+              configs: newConfigs,
+              groups: newGroups,
+              totalConfigs: projectConfigs.value.totalConfigs - 1
+            }
+          } else {
+            // Keep group but remove the config item
+            newConfigs[groupName] = updatedGroup
+            
+            projectConfigs.value = {
+              ...projectConfigs.value,
+              configs: newConfigs,
+              totalConfigs: projectConfigs.value.totalConfigs - 1
+            }
+          }
+        }
+      }
+      
+      return response
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete config'
+      console.error('Error deleting config:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     projects,
@@ -140,6 +326,10 @@ export const useProjectsStore = defineStore('projects', () => {
     updateConfig,
     deleteConfig,
     deleteNamespace,
-    clearError
+    clearError,
+    // Incremental actions
+    addConfigIncremental,
+    updateConfigIncremental,
+    deleteConfigIncremental
   }
 })

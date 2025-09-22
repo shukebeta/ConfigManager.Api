@@ -34,31 +34,32 @@
 
       <div class="dialog-actions">
         <button 
-          @click="cancel" 
-          class="btn btn-secondary"
-          :disabled="loading"
-        >
-          Cancel
-        </button>
-        
-        <button 
           v-if="conflict?.severity === 'error'"
-          @click="editExisting"
+          @click="close"
           class="btn btn-primary"
           :disabled="loading"
         >
-          Edit Existing
+          Close
         </button>
         
-        <button 
-          v-else
-          @click="confirm" 
-          class="btn btn-warning"
-          :disabled="loading"
-        >
-          <span v-if="loading">Adding...</span>
-          <span v-else>Continue Anyway</span>
-        </button>
+        <template v-else>
+          <button 
+            @click="cancel" 
+            class="btn btn-secondary"
+            :disabled="loading"
+          >
+            Cancel
+          </button>
+          
+          <button 
+            @click="confirm" 
+            class="btn btn-warning"
+            :disabled="loading"
+          >
+            <span v-if="loading">Adding...</span>
+            <span v-else>Continue Anyway</span>
+          </button>
+        </template>
       </div>
     </div>
   </div>
@@ -89,7 +90,7 @@ interface Props {
 interface Emits {
   (e: 'confirm'): void
   (e: 'cancel'): void
-  (e: 'edit-existing'): void
+  (e: 'close'): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -110,8 +111,8 @@ const cancel = () => {
   emit('cancel')
 }
 
-const editExisting = () => {
-  emit('edit-existing')
+const close = () => {
+  emit('close')
 }
 </script>
 
