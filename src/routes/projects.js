@@ -14,9 +14,7 @@ router.get('/', async (req, res, next) => {
       const migrationResult = await redisService.migrateExistingProjects();
       projects = migrationResult.projects;
       
-      if (migrationResult.migrated > 0) {
-        console.log(`Migrated ${migrationResult.migrated} projects to registry:`, migrationResult.projects);
-      }
+      // Migration completed silently
     }
     
     res.json({
@@ -58,7 +56,6 @@ router.get('/configs', (req, res) => {
 router.get('/:project/configs', async (req, res, next) => {
   try {
     const { project } = req.params;
-    console.log('Project param received:', JSON.stringify(project), 'length:', project.length);
     
     // Basic validation
     if (!project || project.trim() === '') {
@@ -80,7 +77,7 @@ router.get('/:project/configs', async (req, res, next) => {
     res.json({
       project,
       configs,
-      groups: Object.keys(configs).sort(),
+      groups: Object.keys(configs).sort((a, b) => a.localeCompare(b)),
       totalConfigs: configCount
     });
   } catch (error) {

@@ -159,6 +159,174 @@ describe('Config API Routes', () => {
     });
   });
 
+  describe('DELETE /redis/:key', () => {
+    test('should delete existing configuration', async () => {
+      const testKey = 'test:delete:existing';
+      const testValue = 'test:delete:value';
+
+      // Create the config first
+      await redisService.set(testKey, testValue);
+      
+      // Verify it exists
+      const beforeDelete = await redisService.get(testKey);
+      expect(beforeDelete).toBe(testValue);
+
+      // Delete it
+      const response = await request(app)
+        .delete(`/redis/${testKey}`)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        key: testKey,
+        existed: true,
+        operations: {
+          deleted: 1, // one key deleted
+          published: expect.any(Number) // number of clients notified
+        }
+      });
+
+      // Verify it's gone
+      const afterDelete = await redisService.get(testKey);
+      expect(afterDelete).toBeNull();
+    });
+
+    test('should handle deleting non-existent key', async () => {
+      const nonExistentKey = 'test:delete:nonexistent';
+
+      const response = await request(app)
+        .delete(`/redis/${nonExistentKey}`)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        key: nonExistentKey,
+        existed: false,
+        operations: {
+          deleted: 0, // no keys deleted
+          published: expect.any(Number)
+        }
+      });
+    });
+
+    test('should return 400 for empty key', async () => {
+      await request(app)
+        .delete('/redis/')
+        .expect(404); // Express returns 404 for empty path
+    });
+  });
+
+  describe('DELETE /redis/:key/children', () => {
+    test('should delete all children while preserving parent', async () => {
+      const namespaceKey = 'test:namespace:parent';
+      const parentValue = 'parent:value';
+      
+      // Set up test data: parent + children
+      await redisService.set(namespaceKey, parentValue);
+      await redisService.set(`${namespaceKey}:child1`, 'child1:value');
+      await redisService.set(`${namespaceKey}:child2`, 'child2:value');
+      await redisService.set(`${namespaceKey}:sub:grandchild`, 'grandchild:value');
+
+      // Verify setup
+      expect(await redisService.get(namespaceKey)).toBe(parentValue);
+      expect(await redisService.get(`${namespaceKey}:child1`)).toBe('child1:value');
+      expect(await redisService.get(`${namespaceKey}:child2`)).toBe('child2:value');
+      expect(await redisService.get(`${namespaceKey}:sub:grandchild`)).toBe('grandchild:value');
+
+      // Delete children
+      const response = await request(app)
+        .delete(`/redis/${namespaceKey}/children`)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        namespaceKey: namespaceKey,
+        operations: {
+          deleted: 3, // 3 child keys deleted
+          published: expect.any(Number),
+          childKeys: expect.arrayContaining([
+            `${namespaceKey}:child1`,
+            `${namespaceKey}:child2`,
+            `${namespaceKey}:sub:grandchild`
+          ]),
+          preservedParent: true
+        }
+      });
+
+      // Verify parent still exists
+      expect(await redisService.get(namespaceKey)).toBe(parentValue);
+      
+      // Verify children are gone
+      expect(await redisService.get(`${namespaceKey}:child1`)).toBeNull();
+      expect(await redisService.get(`${namespaceKey}:child2`)).toBeNull();
+      expect(await redisService.get(`${namespaceKey}:sub:grandchild`)).toBeNull();
+    });
+
+    test('should handle namespace with no parent value', async () => {
+      const namespaceKey = 'test:namespace:noparent';
+      
+      // Set up test data: only children, no parent
+      await redisService.set(`${namespaceKey}:child1`, 'child1:value');
+      await redisService.set(`${namespaceKey}:child2`, 'child2:value');
+
+      // Verify setup: no parent, children exist
+      expect(await redisService.get(namespaceKey)).toBeNull();
+      expect(await redisService.get(`${namespaceKey}:child1`)).toBe('child1:value');
+      expect(await redisService.get(`${namespaceKey}:child2`)).toBe('child2:value');
+
+      // Delete children
+      const response = await request(app)
+        .delete(`/redis/${namespaceKey}/children`)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        namespaceKey: namespaceKey,
+        operations: {
+          deleted: 2, // 2 child keys deleted
+          published: expect.any(Number),
+          childKeys: expect.arrayContaining([
+            `${namespaceKey}:child1`,
+            `${namespaceKey}:child2`
+          ]),
+          preservedParent: false // no parent to preserve
+        }
+      });
+
+      // Verify children are gone
+      expect(await redisService.get(`${namespaceKey}:child1`)).toBeNull();
+      expect(await redisService.get(`${namespaceKey}:child2`)).toBeNull();
+    });
+
+    test('should handle namespace with no children', async () => {
+      const namespaceKey = 'test:namespace:nochildren';
+
+      // Delete from namespace with no children
+      const response = await request(app)
+        .delete(`/redis/${namespaceKey}/children`)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        namespaceKey: namespaceKey,
+        operations: {
+          deleted: 0, // no children to delete
+          published: 0, // no deletion events
+          childKeys: [],
+          preservedParent: false // no parent exists
+        }
+      });
+    });
+
+    test('should return 400 for empty namespace key', async () => {
+      const response = await request(app)
+        .delete('/redis/ /children') // space key should trigger validation error
+        .expect(400);
+        
+      expect(response.body.message).toContain('Key parameter is required');
+    });
+  });
+
   describe('Error Handling', () => {
     test('should handle Redis connection errors gracefully', async () => {
       // Mock logger.error to verify it was called without polluting output

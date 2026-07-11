@@ -203,7 +203,7 @@ class RedisService {
       
       // Extract category from keyname (first part)
       const category = keyParts[0] || 'general';
-      const setting = keyParts.length > 1 ? keyParts.slice(1).join(':') : keyname;
+      const setting = keyname; // Keep the full keyname as the setting identifier
       
       if (!configs[category]) {
         configs[category] = {};
@@ -377,6 +377,77 @@ class RedisService {
       exists: keyExists,
       message: keyExists ? `Configuration key '${key}' already exists` : null,
       suggestion: keyExists ? 'Use PUT to update existing configuration instead of POST' : null
+    };
+  }
+
+  // Delete all child keys under a namespace (group deletion)
+  async deleteNamespaceChildren(namespaceKey) {
+    const client = this.getClient();
+    
+    // Find all child keys under this namespace
+    const pattern = `${namespaceKey}:*`;
+    const childKeys = [];
+    
+    // Use SCAN instead of KEYS to avoid blocking Redis
+    const stream = client.scanStream({ 
+      match: pattern, 
+      count: 100
+    });
+    
+    for await (const keysChunk of stream) {
+      childKeys.push(...keysChunk);
+    }
+    
+    if (childKeys.length === 0) {
+      // Check if parent key exists (for consistency with non-empty case)
+      const parentExists = await client.exists(namespaceKey);
+      
+      return {
+        deleted: 0,
+        published: 0,
+        childKeys: [],
+        preservedParent: parentExists === 1
+      };
+    }
+    
+    // Check if parent key exists (should be preserved)
+    const parentExists = await client.exists(namespaceKey);
+    
+    // Use pipeline for atomic deletion + publishing
+    const pipeline = client.pipeline();
+    
+    // Delete all child keys and publish deletion events
+    childKeys.forEach(key => {
+      pipeline.del(key);
+      pipeline.publish(key, '__DELETED__');
+    });
+    
+    const results = await pipeline.exec();
+    
+    // Check if all operations succeeded
+    let deletedCount = 0;
+    let publishedCount = 0;
+    
+    for (let i = 0; i < results.length; i += 2) {
+      const [delError, delResult] = results[i];
+      const [pubError, pubResult] = results[i + 1];
+      
+      if (delError) {
+        throw new Error(`Delete operation failed: ${delError.message}`);
+      }
+      if (pubError) {
+        throw new Error(`Publish operation failed: ${pubError.message}`);
+      }
+      
+      deletedCount += delResult;
+      publishedCount += pubResult;
+    }
+    
+    return {
+      deleted: deletedCount,
+      published: publishedCount,
+      childKeys: childKeys,
+      preservedParent: parentExists === 1
     };
   }
 }
