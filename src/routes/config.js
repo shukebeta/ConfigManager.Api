@@ -168,4 +168,34 @@ router.delete('/:key', async (req, res, next) => {
   }
 });
 
+// DELETE /redis/:key/children - Delete all child keys under a namespace (group deletion)
+router.delete('/:key/children', async (req, res, next) => {
+  try {
+    const { key } = req.params;
+    
+    // Basic validation
+    if (!key || key.trim() === '') {
+      const error = new Error('Key parameter is required');
+      error.type = 'validation';
+      throw error;
+    }
+
+    // Execute namespace children deletion
+    const result = await redisService.deleteNamespaceChildren(key);
+    
+    res.json({
+      success: true,
+      namespaceKey: key,
+      operations: {
+        deleted: result.deleted, // number of child keys deleted
+        published: result.published, // number of deletion events published
+        childKeys: result.childKeys, // list of deleted child keys
+        preservedParent: result.preservedParent // whether parent key was preserved
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

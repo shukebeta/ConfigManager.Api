@@ -95,23 +95,25 @@ describe('Project Discovery API Routes', () => {
       expect(response.body.groups).toEqual(['feature', 'llm', 'nlog']);
       expect(response.body.totalConfigs).toBe(4);
 
-      // Check config structure
+      // Check config structure. Setting keys are the full keyname (project-
+      // stripped), per the namespace model: `${project}:nlog:minlevel` ->
+      // category `nlog`, setting key `nlog:minlevel`.
       expect(response.body.configs.nlog).toBeDefined();
-      expect(response.body.configs.nlog.minlevel).toEqual({
+      expect(response.body.configs.nlog['nlog:minlevel']).toEqual({
         key: `${project}:nlog:minlevel`,
         value: 'Debug',
         type: 'loglevel',
         parsedValue: 'Debug'
       });
 
-      expect(response.body.configs.llm.timeout).toEqual({
+      expect(response.body.configs.llm['llm:timeout']).toEqual({
         key: `${project}:llm:timeout`,
         value: '30000',
         type: 'integer',
         parsedValue: 30000
       });
 
-      expect(response.body.configs.feature.newui).toEqual({
+      expect(response.body.configs.feature['feature:newui']).toEqual({
         key: `${project}:feature:newui`,
         value: 'true',
         type: 'boolean',
@@ -161,8 +163,9 @@ describe('Project Discovery API Routes', () => {
         .get(`/projects/${project}/configs`)
         .expect(200);
 
-      expect(response.body.configs.database['connection:string']).toBeDefined();
-      expect(response.body.configs.auth['jwt:secret:key']).toBeDefined();
+      // Setting keys are full keynames (project-stripped).
+      expect(response.body.configs.database['database:connection:string']).toBeDefined();
+      expect(response.body.configs.auth['auth:jwt:secret:key']).toBeDefined();
     });
   });
 
