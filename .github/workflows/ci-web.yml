@@ -1,0 +1,36 @@
+name: CI (Web)
+
+# Path-scoped: only Web changes (or this workflow file) trigger the Web test
+# suite; Api changes route to ci-api.yml.
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'ConfigManager.Web/**'
+      - '.github/workflows/ci-web.yml'
+  pull_request:
+    paths:
+      - 'ConfigManager.Web/**'
+      - '.github/workflows/ci-web.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ConfigManager.Web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ConfigManager.Web/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run test:ci
