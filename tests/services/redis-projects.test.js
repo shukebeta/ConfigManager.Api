@@ -110,14 +110,17 @@ describe('Redis Service - Project Discovery', () => {
       expect(configs.feature).toBeDefined();
       expect(configs.database).toBeDefined();
 
+      // Setting keys are the full keyname (project-stripped), per the namespace
+      // model in getProjectConfigs (setting = keyname): `${project}:nlog:minlevel`
+      // -> category `nlog`, setting key `nlog:minlevel`.
       // Check nlog category
-      expect(configs.nlog.minlevel).toEqual({
+      expect(configs.nlog['nlog:minlevel']).toEqual({
         key: `${project}:nlog:minlevel`,
         value: 'Debug',
         type: 'loglevel',
         parsedValue: 'Debug'
       });
-      expect(configs.nlog.maxlevel).toEqual({
+      expect(configs.nlog['nlog:maxlevel']).toEqual({
         key: `${project}:nlog:maxlevel`,
         value: 'Fatal',
         type: 'loglevel',
@@ -125,13 +128,13 @@ describe('Redis Service - Project Discovery', () => {
       });
 
       // Check llm category
-      expect(configs.llm.timeout).toEqual({
+      expect(configs.llm['llm:timeout']).toEqual({
         key: `${project}:llm:timeout`,
         value: '30000',
         type: 'integer',
         parsedValue: 30000
       });
-      expect(configs.llm.retries).toEqual({
+      expect(configs.llm['llm:retries']).toEqual({
         key: `${project}:llm:retries`,
         value: '3',
         type: 'integer',
@@ -139,7 +142,7 @@ describe('Redis Service - Project Discovery', () => {
       });
 
       // Check feature category
-      expect(configs.feature.newui).toEqual({
+      expect(configs.feature['feature:newui']).toEqual({
         key: `${project}:feature:newui`,
         value: 'true',
         type: 'boolean',
@@ -147,7 +150,7 @@ describe('Redis Service - Project Discovery', () => {
       });
 
       // Check complex key with colons
-      expect(configs.database['connection:string']).toEqual({
+      expect(configs.database['database:connection:string']).toEqual({
         key: `${project}:database:connection:string`,
         value: 'postgresql://localhost',
         type: 'string',
