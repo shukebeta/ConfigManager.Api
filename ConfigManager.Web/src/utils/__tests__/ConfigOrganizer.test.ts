@@ -20,13 +20,13 @@ describe('Config Organization Logic', () => {
       type: 'standalone',
       key: 'anotherkey',
       fullKey: 'test:anotherkey',
-      config: { value: 'value2', type: 'string' }
+      config: { key: 'test:mygroup:anotherkey', value: 'value2', type: 'string', parsedValue: 'value2' }
     })
     expect(result.mygroup[1]).toEqual({
       type: 'standalone',
       key: 'simplekey',
       fullKey: 'test:simplekey',
-      config: { value: 'value1', type: 'string' }
+      config: { key: 'test:mygroup:simplekey', value: 'value1', type: 'string', parsedValue: 'value1' }
     })
   })
   
